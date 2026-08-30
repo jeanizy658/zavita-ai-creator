@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AiEnhanceRouteImport } from './routes/ai-enhance'
+import { Route as AiVoiceRouteImport } from './routes/ai-voice'
 import { Route as AvatarRouteImport } from './routes/avatar'
 import { Route as CameraRouteImport } from './routes/camera'
 import { Route as HomeRouteImport } from './routes/home'
@@ -19,6 +21,16 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiEnhanceRoute = AiEnhanceRouteImport.update({
+  id: '/ai-enhance',
+  path: '/ai-enhance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiVoiceRoute = AiVoiceRouteImport.update({
+  id: '/ai-voice',
+  path: '/ai-voice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AvatarRoute = AvatarRouteImport.update({
@@ -49,6 +61,8 @@ const ProjectsRoute = ProjectsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ai-enhance': typeof AiEnhanceRoute
+  '/ai-voice': typeof AiVoiceRoute
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/home': typeof HomeRoute
@@ -57,6 +71,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ai-enhance': typeof AiEnhanceRoute
+  '/ai-voice': typeof AiVoiceRoute
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/home': typeof HomeRoute
@@ -66,6 +82,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ai-enhance': typeof AiEnhanceRoute
+  '/ai-voice': typeof AiVoiceRoute
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/home': typeof HomeRoute
@@ -74,12 +92,30 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/avatar' | '/camera' | '/home' | '/profile' | '/projects'
+  fullPaths:
+    | '/'
+    | '/ai-enhance'
+    | '/ai-voice'
+    | '/avatar'
+    | '/camera'
+    | '/home'
+    | '/profile'
+    | '/projects'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/avatar' | '/camera' | '/home' | '/profile' | '/projects'
+  to:
+    | '/'
+    | '/ai-enhance'
+    | '/ai-voice'
+    | '/avatar'
+    | '/camera'
+    | '/home'
+    | '/profile'
+    | '/projects'
   id:
     | '__root__'
     | '/'
+    | '/ai-enhance'
+    | '/ai-voice'
     | '/avatar'
     | '/camera'
     | '/home'
@@ -89,6 +125,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AiEnhanceRoute: typeof AiEnhanceRoute
+  AiVoiceRoute: typeof AiVoiceRoute
   AvatarRoute: typeof AvatarRoute
   CameraRoute: typeof CameraRoute
   HomeRoute: typeof HomeRoute
@@ -103,6 +141,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-enhance': {
+      id: '/ai-enhance'
+      path: '/ai-enhance'
+      fullPath: '/ai-enhance'
+      preLoaderRoute: typeof AiEnhanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-voice': {
+      id: '/ai-voice'
+      path: '/ai-voice'
+      fullPath: '/ai-voice'
+      preLoaderRoute: typeof AiVoiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/avatar': {
@@ -145,6 +197,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AiEnhanceRoute: AiEnhanceRoute,
+  AiVoiceRoute: AiVoiceRoute,
   AvatarRoute: AvatarRoute,
   CameraRoute: CameraRoute,
   HomeRoute: HomeRoute,
