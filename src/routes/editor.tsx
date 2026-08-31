@@ -157,7 +157,7 @@ function EditorScreen() {
               className="aspect-video w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/30" />
-            <p className="absolute inset-x-3 bottom-10 text-center text-[13px] font-bold leading-snug text-foreground drop-shadow-[0_2px_10px_oklch(0_0_0/0.9)]">
+            <p className="absolute inset-x-3 bottom-14 text-center text-[13px] font-bold leading-snug text-foreground drop-shadow-[0_2px_10px_oklch(0_0_0/0.9)]">
               Pour réussir dans le business, il faut comprendre son client.
             </p>
             <button
@@ -211,7 +211,7 @@ function EditorScreen() {
                 key={k}
                 className="rounded-full bg-gradient-brand p-[1px] text-[10px] font-bold tracking-[0.14em]"
               >
-                <span className="block rounded-full bg-background px-2.5 py-1 text-gradient">{k}</span>
+                <span className="block rounded-full bg-background px-2.5 py-1 text-foreground">{k}</span>
               </span>
             ))}
           </div>
@@ -332,7 +332,7 @@ function EditorScreen() {
         {/* Mode panel */}
         {tab !== "edit" ? (
           <section className="animate-rise mt-5 surface-card p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gradient">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
               {BOTTOM_TABS.find((b) => b.id === tab)?.label} mode
             </p>
             <p className="mt-1.5 text-[12px] text-muted-foreground">
