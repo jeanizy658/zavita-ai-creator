@@ -91,8 +91,8 @@ function CameraScreen() {
         className={cn(
           "absolute inset-0 size-full object-cover transition-all duration-500",
           flipped && "scale-x-[-1]",
-          active.COLOR && "saturate-150 contrast-110",
-          active.SKIN && "brightness-105",
+          active["COLOR"] && "saturate-150 contrast-110",
+          active["SKIN"] && "brightness-105",
         )}
         style={{ transform: `${flipped ? "scaleX(-1) " : ""}scale(${zoom})` }}
       />
@@ -152,7 +152,7 @@ function CameraScreen() {
       {/* Left status chips */}
       <div className="absolute left-4 top-[38%] z-10 flex flex-col gap-2">
         <StatusChip label="LIGHT" value={active["AUTO LIGHT"] ? "AUTO" : "MANUAL"} />
-        <StatusChip label="SKIN" value={active.SKIN ? "SMOOTH" : "NATURAL"} />
+        <StatusChip label="SKIN" value={active["SKIN"] ? "SMOOTH" : "NATURAL"} />
       </div>
 
       {/* Floating control panel */}
