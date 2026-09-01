@@ -6,7 +6,7 @@ export type TimelineMedia = {
   id: string;
   trackId: TrackId;
   label: string;
-  image?: string;
+  image?: string | undefined;
   duration: number;
 };
 

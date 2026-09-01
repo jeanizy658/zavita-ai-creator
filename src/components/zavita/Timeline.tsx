@@ -18,8 +18,8 @@ type Clip = {
   id: string;
   start: number;
   duration: number;
-  label?: string;
-  image?: string;
+  label?: string | undefined;
+  image?: string | undefined;
 };
 
 type Track = {
