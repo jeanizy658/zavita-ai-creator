@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useStudio } from "@/lib/studio-store";
 import { Eye, EyeOff, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import editorFrame from "@/assets/editor-frame.jpg";
@@ -12,7 +13,6 @@ import photo2 from "@/assets/proj-product.jpg";
 
 export const TIMELINE_DURATION = 135; // 02:15
 export const PX_PER_SECOND = 26;
-const WIDTH = TIMELINE_DURATION * PX_PER_SECOND;
 
 type Clip = {
   id: string;
@@ -114,6 +114,31 @@ export function Timeline({
   playhead: number;
   onPlayheadChange: (seconds: number) => void;
 }) {
+  const { timelineMedia } = useStudio();
+  const tracks = useMemo(() => {
+    return TRACKS.map((t) => {
+      const extras = timelineMedia.filter((m) => m.trackId === t.id);
+      if (extras.length === 0) return t;
+      let cursor = t.clips.reduce((max, c) => Math.max(max, c.start + c.duration), 0) + 1;
+      const clips = [...t.clips];
+      for (const e of extras) {
+        clips.push({ id: e.id, start: cursor, duration: e.duration, label: e.label, image: e.image });
+        cursor += e.duration + 1;
+      }
+      return { ...t, clips };
+    });
+  }, [timelineMedia]);
+
+  const totalDuration = useMemo(
+    () =>
+      Math.max(
+        TIMELINE_DURATION,
+        ...tracks.flatMap((t) => t.clips.map((c) => c.start + c.duration)),
+      ),
+    [tracks],
+  );
+  const width = totalDuration * PX_PER_SECOND;
+
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const [selectedTrack, setSelectedTrack] = useState("main");
   const [selectedClip, setSelectedClip] = useState<string | null>("m1");
@@ -124,10 +149,10 @@ export function Timeline({
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const x = clientX - rect.left + el.scrollLeft;
-    onPlayheadChange(Math.max(0, Math.min(TIMELINE_DURATION, x / PX_PER_SECOND)));
+    onPlayheadChange(Math.max(0, Math.min(totalDuration, x / PX_PER_SECOND)));
   };
 
-  const ticks = Array.from({ length: Math.floor(TIMELINE_DURATION / 5) + 1 }, (_, i) => i * 5);
+  const ticks = Array.from({ length: Math.floor(totalDuration / 5) + 1 }, (_, i) => i * 5);
 
   return (
     <div className="rounded-2xl border border-border bg-surface/60">
@@ -135,7 +160,7 @@ export function Timeline({
         {/* Track heads */}
         <div className="w-[84px] shrink-0 border-r border-border">
           <div className="h-7 border-b border-border" />
-          {TRACKS.map((t) => (
+          {tracks.map((t) => (
             <div
               key={t.id}
               onClick={() => setSelectedTrack(t.id)}
@@ -175,7 +200,7 @@ export function Timeline({
             if (e.buttons === 1) seek(e.clientX);
           }}
         >
-          <div className="relative" style={{ width: WIDTH }}>
+          <div className="relative" style={{ width }}>
             {/* Ruler */}
             <div className="relative h-7 border-b border-border">
               {ticks.map((s) => (
@@ -191,7 +216,7 @@ export function Timeline({
               ))}
             </div>
 
-            {TRACKS.map((t) => (
+            {tracks.map((t) => (
               <div
                 key={t.id}
                 onClick={() => setSelectedTrack(t.id)}
