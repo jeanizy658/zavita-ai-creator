@@ -21,9 +21,13 @@ import {
   X,
   Crop,
   Camera,
+  Check,
+  ImagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Timeline, TIMELINE_DURATION } from "@/components/zavita/Timeline";
+import { AddToProjectSheet } from "@/components/zavita/AddToProjectSheet";
+import { useStudio } from "@/lib/studio-store";
 import { SectionHeader } from "@/components/zavita/SectionHeader";
 import editorFrame from "@/assets/editor-frame.jpg";
 import ill1 from "@/assets/ai-ill-1.jpg";
@@ -96,6 +100,22 @@ function EditorScreen() {
   const [tab, setTab] = useState<string>("edit");
   const [added, setAdded] = useState<string[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const { timelineMedia } = useStudio();
+  const mediaCount = useRef(timelineMedia.length);
+
+  useEffect(() => {
+    if (timelineMedia.length > mediaCount.current) {
+      const added = timelineMedia.length - mediaCount.current;
+      setToast(`${added} media added to your project`);
+      const t = setTimeout(() => setToast(null), 2200);
+      mediaCount.current = timelineMedia.length;
+      return () => clearTimeout(t);
+    }
+    mediaCount.current = timelineMedia.length;
+    return;
+  }, [timelineMedia]);
   const raf = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -140,6 +160,13 @@ function EditorScreen() {
         >
           Home
         </Link>
+        <button
+          onClick={() => setAddOpen(true)}
+          aria-label="Add media to project"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-accent active:scale-95"
+        >
+          <ImagePlus className="size-4.5" strokeWidth={1.7} />
+        </button>
         <button className="rounded-full bg-gradient-brand px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-primary-foreground shadow-glow-sm active:scale-95">
           Export
         </button>
@@ -299,7 +326,7 @@ function EditorScreen() {
 
         {/* Quick edit toolbar */}
         <section className="animate-rise mt-6">
-          <SectionHeader title="Quick Edit" />
+          <SectionHeader title="Quick Edit" actionLabel="Add media" onAction={() => setAddOpen(true)} />
           <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
             {QUICK_TOOLS.map((t) => (
               <button
@@ -355,6 +382,12 @@ function EditorScreen() {
                   <Mic className="size-4 text-accent" strokeWidth={1.7} /> AI Voice
                 </button>
                 <button
+                  onClick={() => navigate({ to: "/ai-background" })}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-[11px] font-semibold active:scale-95"
+                >
+                  <Layers className="size-4 text-accent" strokeWidth={1.7} /> AI Background
+                </button>
+                <button
                   onClick={() => navigate({ to: "/avatar" })}
                   className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-[11px] font-semibold active:scale-95"
                 >
@@ -371,6 +404,17 @@ function EditorScreen() {
           </section>
         ) : null}
       </div>
+
+      {toast ? (
+        <div className="animate-rise pointer-events-none fixed inset-x-0 bottom-[104px] z-50 flex justify-center px-4">
+          <span className="flex items-center gap-2 rounded-full border border-accent bg-surface px-4 py-2 text-[11px] font-semibold shadow-glow-sm">
+            <Check className="size-3.5 text-accent" strokeWidth={2.6} />
+            {toast}
+          </span>
+        </div>
+      ) : null}
+
+      <AddToProjectSheet open={addOpen} onClose={() => setAddOpen(false)} />
 
       {/* Editor bottom toolbar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[560px] border-t border-border bg-background/92 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 backdrop-blur-xl">
