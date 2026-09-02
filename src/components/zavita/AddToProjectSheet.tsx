@@ -170,6 +170,7 @@ export function AddToProjectSheet({ open, onClose }: { open: boolean; onClose: (
               <button
                 key={a.id}
                 onClick={() => toggle(a)}
+                data-media-item="true"
                 className={cn(
                   "animate-rise overflow-hidden rounded-xl border text-left transition-all active:scale-[0.98]",
                   isSel ? "border-accent shadow-glow-sm" : "border-border",
