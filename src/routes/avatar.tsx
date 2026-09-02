@@ -229,7 +229,7 @@ function AvatarStudio() {
                 key={i}
                 className="flex-1 animate-pulse rounded-full bg-violet"
                 style={{
-                  height: `${25 + Math.abs(Math.sin(i * 0.8)) * 70}%`,
+                  height: `${(25 + Math.abs(Math.sin(i * 0.8)) * 70).toFixed(2)}%`,
                   animationDelay: `${i * 40}ms`,
                 }}
               />

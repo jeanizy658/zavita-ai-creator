@@ -55,9 +55,9 @@ function Wave({
           key={i}
           className="flex-1 rounded-full transition-all duration-500"
           style={{
-            height: `${(rough ? 14 + b * 82 : 22 + b * 66) * (active ? 1 : 0.72)}%`,
+            height: `${((rough ? 14 + b * 82 : 22 + b * 66) * (active ? 1 : 0.72)).toFixed(2)}%`,
             background: color,
-            opacity: active ? 0.5 + b * 0.5 : 0.35 + b * 0.3,
+            opacity: Number((active ? 0.5 + b * 0.5 : 0.35 + b * 0.3).toFixed(2)),
           }}
         />
       ))}

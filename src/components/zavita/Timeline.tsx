@@ -100,7 +100,7 @@ function Waveform() {
         <span
           key={i}
           className="flex-1 rounded-full bg-[oklch(0.78_0.19_150)]"
-          style={{ height: `${18 + b * 70}%`, opacity: 0.55 + b * 0.45 }}
+          style={{ height: `${(18 + b * 70).toFixed(2)}%`, opacity: Number((0.55 + b * 0.45).toFixed(2)) }}
         />
       ))}
     </div>
