@@ -54,8 +54,18 @@ export default function HomeScreen() {
   const features = [
     { icon: Clapperboard, title: "AI Video", description: "Enhance & edit" },
     { icon: ImageIcon, title: "AI Photo", description: "Enhance photos" },
-    { icon: Mic, title: "AI Voice", description: "Enhance voice" },
-    { icon: Layers, title: "AI Background", description: "Change or blur background" },
+    {
+      icon: Mic,
+      title: "AI Voice",
+      description: "Enhance voice",
+      onClick: () => navigate({ to: "/ai-voice" }),
+    },
+    {
+      icon: Layers,
+      title: "AI Background",
+      description: "Change or blur background",
+      onClick: () => navigate({ to: "/ai-background" }),
+    },
     { icon: Wand2, title: "AI Montage", description: "Professional editing" },
     { icon: Subtitles, title: "AI Captions", description: "Automatic subtitles" },
     {
