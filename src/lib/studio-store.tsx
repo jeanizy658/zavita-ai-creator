@@ -57,6 +57,31 @@ type StudioValue = {
   setAvatarVoice: (v: string) => void;
   avatarStatus: AvatarStatus;
   setAvatarStatus: (v: AvatarStatus) => void;
+
+  exportFormat: ExportFormat;
+  setExportFormat: (v: ExportFormat) => void;
+  exportQuality: ExportQuality;
+  setExportQuality: (v: ExportQuality) => void;
+  exportFps: ExportFps;
+  setExportFps: (v: ExportFps) => void;
+  exportStatus: TaskStatus;
+  setExportStatus: (v: TaskStatus) => void;
+
+  platforms: Record<PlatformId, boolean>;
+  togglePlatform: (id: PlatformId) => void;
+  caption: string;
+  setCaption: (v: string) => void;
+  hashtags: string[];
+  addHashtag: (v: string) => void;
+  removeHashtag: (v: string) => void;
+  publishMode: PublishMode;
+  setPublishMode: (v: PublishMode) => void;
+  scheduledDate: string;
+  setScheduledDate: (v: string) => void;
+  scheduledTime: { hour: number; minute: number; meridiem: "AM" | "PM" };
+  setScheduledTime: (v: { hour: number; minute: number; meridiem: "AM" | "PM" }) => void;
+  publishStatus: PublishStatus;
+  setPublishStatus: (v: PublishStatus) => void;
 };
 
 const StudioContext = createContext<StudioValue | null>(null);
