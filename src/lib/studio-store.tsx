@@ -16,6 +16,14 @@ export type BlurStrength = "LIGHT" | "MEDIUM" | "STRONG" | "CINEMATIC";
 export type AvatarStyle = "REALISTIC" | "BUSINESS" | "CREATOR" | "PRESENTER";
 export type AvatarStatus = "idle" | "generating" | "completed";
 
+export type ExportFormat = "9:16" | "1:1" | "16:9";
+export type ExportQuality = "1080p" | "4K";
+export type ExportFps = 30 | 60;
+export type TaskStatus = "idle" | "processing" | "completed";
+export type PlatformId = "youtube" | "facebook" | "instagram" | "tiktok";
+export type PublishMode = "NOW" | "SCHEDULE";
+export type PublishStatus = "idle" | "processing" | "published" | "scheduled";
+
 type VoiceValues = {
   noise: number;
   echo: number;
@@ -57,6 +65,31 @@ type StudioValue = {
   setAvatarVoice: (v: string) => void;
   avatarStatus: AvatarStatus;
   setAvatarStatus: (v: AvatarStatus) => void;
+
+  exportFormat: ExportFormat;
+  setExportFormat: (v: ExportFormat) => void;
+  exportQuality: ExportQuality;
+  setExportQuality: (v: ExportQuality) => void;
+  exportFps: ExportFps;
+  setExportFps: (v: ExportFps) => void;
+  exportStatus: TaskStatus;
+  setExportStatus: (v: TaskStatus) => void;
+
+  platforms: Record<PlatformId, boolean>;
+  togglePlatform: (id: PlatformId) => void;
+  caption: string;
+  setCaption: (v: string) => void;
+  hashtags: string[];
+  addHashtag: (v: string) => void;
+  removeHashtag: (v: string) => void;
+  publishMode: PublishMode;
+  setPublishMode: (v: PublishMode) => void;
+  scheduledDate: string;
+  setScheduledDate: (v: string) => void;
+  scheduledTime: { hour: number; minute: number; meridiem: "AM" | "PM" };
+  setScheduledTime: (v: { hour: number; minute: number; meridiem: "AM" | "PM" }) => void;
+  publishStatus: PublishStatus;
+  setPublishStatus: (v: PublishStatus) => void;
 };
 
 const StudioContext = createContext<StudioValue | null>(null);
@@ -85,6 +118,27 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [avatarScript, setAvatarScript] = useState("Bonjour et bienvenue sur ma chaîne.");
   const [avatarVoice, setAvatarVoice] = useState("Natural Voice");
   const [avatarStatus, setAvatarStatus] = useState<AvatarStatus>("idle");
+
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("9:16");
+  const [exportQuality, setExportQuality] = useState<ExportQuality>("4K");
+  const [exportFps, setExportFps] = useState<ExportFps>(60);
+  const [exportStatus, setExportStatus] = useState<TaskStatus>("idle");
+  const [platforms, setPlatforms] = useState<Record<PlatformId, boolean>>({
+    youtube: true,
+    facebook: true,
+    instagram: true,
+    tiktok: true,
+  });
+  const [caption, setCaption] = useState("5 conseils pour réussir son business");
+  const [hashtags, setHashtags] = useState<string[]>(["#Business", "#Entrepreneur", "#Success"]);
+  const [publishMode, setPublishMode] = useState<PublishMode>("SCHEDULE");
+  const [scheduledDate, setScheduledDate] = useState("2024-06-05");
+  const [scheduledTime, setScheduledTime] = useState<{
+    hour: number;
+    minute: number;
+    meridiem: "AM" | "PM";
+  }>({ hour: 7, minute: 30, meridiem: "PM" });
+  const [publishStatus, setPublishStatus] = useState<PublishStatus>("idle");
 
   const value = useMemo<StudioValue>(
     () => ({
@@ -121,6 +175,34 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       setAvatarVoice,
       avatarStatus,
       setAvatarStatus,
+      exportFormat,
+      setExportFormat,
+      exportQuality,
+      setExportQuality,
+      exportFps,
+      setExportFps,
+      exportStatus,
+      setExportStatus,
+      platforms,
+      togglePlatform: (id) => setPlatforms((prev) => ({ ...prev, [id]: !prev[id] })),
+      caption,
+      setCaption,
+      hashtags,
+      addHashtag: (v) =>
+        setHashtags((prev) => {
+          const tag = `#${v.replace(/^#+/, "").trim()}`;
+          if (tag.length < 2 || prev.some((t) => t.toLowerCase() === tag.toLowerCase())) return prev;
+          return [...prev, tag];
+        }),
+      removeHashtag: (v) => setHashtags((prev) => prev.filter((t) => t !== v)),
+      publishMode,
+      setPublishMode,
+      scheduledDate,
+      setScheduledDate,
+      scheduledTime,
+      setScheduledTime,
+      publishStatus,
+      setPublishStatus,
     }),
     [
       timelineMedia,
@@ -137,6 +219,17 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       avatarScript,
       avatarVoice,
       avatarStatus,
+      exportFormat,
+      exportQuality,
+      exportFps,
+      exportStatus,
+      platforms,
+      caption,
+      hashtags,
+      publishMode,
+      scheduledDate,
+      scheduledTime,
+      publishStatus,
     ],
   );
 

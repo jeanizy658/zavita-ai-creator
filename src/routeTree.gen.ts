@@ -16,9 +16,11 @@ import { Route as AiVoiceRouteImport } from './routes/ai-voice'
 import { Route as AvatarRouteImport } from './routes/avatar'
 import { Route as CameraRouteImport } from './routes/camera'
 import { Route as EditorRouteImport } from './routes/editor'
+import { Route as ExportRouteImport } from './routes/export'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as PublishRouteImport } from './routes/publish'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -55,6 +57,11 @@ const EditorRoute = EditorRouteImport.update({
   path: '/editor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -70,6 +77,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublishRoute = PublishRouteImport.update({
+  id: '/publish',
+  path: '/publish',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -79,9 +91,11 @@ export interface FileRoutesByFullPath {
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/editor': typeof EditorRoute
+  '/export': typeof ExportRoute
   '/home': typeof HomeRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
+  '/publish': typeof PublishRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,9 +105,11 @@ export interface FileRoutesByTo {
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/editor': typeof EditorRoute
+  '/export': typeof ExportRoute
   '/home': typeof HomeRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
+  '/publish': typeof PublishRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,9 +120,11 @@ export interface FileRoutesById {
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/editor': typeof EditorRoute
+  '/export': typeof ExportRoute
   '/home': typeof HomeRoute
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
+  '/publish': typeof PublishRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -118,9 +136,11 @@ export interface FileRouteTypes {
     | '/avatar'
     | '/camera'
     | '/editor'
+    | '/export'
     | '/home'
     | '/profile'
     | '/projects'
+    | '/publish'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -130,9 +150,11 @@ export interface FileRouteTypes {
     | '/avatar'
     | '/camera'
     | '/editor'
+    | '/export'
     | '/home'
     | '/profile'
     | '/projects'
+    | '/publish'
   id:
     | '__root__'
     | '/'
@@ -142,9 +164,11 @@ export interface FileRouteTypes {
     | '/avatar'
     | '/camera'
     | '/editor'
+    | '/export'
     | '/home'
     | '/profile'
     | '/projects'
+    | '/publish'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -155,9 +179,11 @@ export interface RootRouteChildren {
   AvatarRoute: typeof AvatarRoute
   CameraRoute: typeof CameraRoute
   EditorRoute: typeof EditorRoute
+  ExportRoute: typeof ExportRoute
   HomeRoute: typeof HomeRoute
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
+  PublishRoute: typeof PublishRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -211,6 +237,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EditorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/home': {
       id: '/home'
       path: '/home'
@@ -232,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/publish': {
+      id: '/publish'
+      path: '/publish'
+      fullPath: '/publish'
+      preLoaderRoute: typeof PublishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -243,9 +283,11 @@ const rootRouteChildren: RootRouteChildren = {
   AvatarRoute: AvatarRoute,
   CameraRoute: CameraRoute,
   EditorRoute: EditorRoute,
+  ExportRoute: ExportRoute,
   HomeRoute: HomeRoute,
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
+  PublishRoute: PublishRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
