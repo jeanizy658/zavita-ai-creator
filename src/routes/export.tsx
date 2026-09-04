@@ -88,15 +88,16 @@ function ExportScreen() {
 
   useEffect(() => {
     if (exportStatus !== "processing") return;
+    let current = 0;
+    setStep(0);
     const t = setInterval(() => {
-      setStep((s) => {
-        if (s >= steps.length - 1) {
-          clearInterval(t);
-          setExportStatus("completed");
-          return s;
-        }
-        return s + 1;
-      });
+      current += 1;
+      if (current >= steps.length) {
+        clearInterval(t);
+        setExportStatus("completed");
+        return;
+      }
+      setStep(current);
     }, 620);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
