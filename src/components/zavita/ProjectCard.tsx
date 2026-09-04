@@ -5,14 +5,24 @@ export function ProjectCard({
   title,
   duration,
   date,
+  onClick,
+  className,
 }: {
   thumbnail: string;
   title: string;
   duration: string;
   date: string;
+  onClick?: () => void;
+  className?: string;
 }) {
   return (
-    <button className="group w-[148px] shrink-0 text-left transition-transform duration-200 active:scale-[0.97]">
+    <button
+      onClick={onClick}
+      className={
+        className ??
+        "group w-[148px] shrink-0 text-left transition-transform duration-200 active:scale-[0.97]"
+      }
+    >
       <div className="relative aspect-[9/13] overflow-hidden rounded-xl border border-border">
         <img
           src={thumbnail}
