@@ -167,7 +167,10 @@ function EditorScreen() {
         >
           <ImagePlus className="size-4.5" strokeWidth={1.7} />
         </button>
-        <button className="rounded-full bg-gradient-brand px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-primary-foreground shadow-glow-sm active:scale-95">
+        <button
+          onClick={() => navigate({ to: "/export" })}
+          className="rounded-full bg-gradient-brand px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-primary-foreground shadow-glow-sm active:scale-95"
+        >
           Export
         </button>
       </header>
