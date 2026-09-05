@@ -192,7 +192,8 @@ export default function HomeScreen() {
           className="mt-3 w-full rounded-xl bg-gradient-brand py-3 text-[11.5px] font-extrabold uppercase tracking-[0.16em] text-primary-foreground shadow-glow-sm active:scale-[0.98]"
         >
           Publish everywhere
-        </div>
+        </button>
+
       </section>
     </AppShell>
   );
