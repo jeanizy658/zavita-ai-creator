@@ -30,6 +30,12 @@ export const Route = createFileRoute("/camera")({
   component: CameraScreen,
 });
 
+const PRESETS = [
+  { name: "Standard", tools: { "AUTO LIGHT": true, SKIN: false, HDR: true, COLOR: false, STABILIZATION: false } },
+  { name: "Beauty", tools: { "AUTO LIGHT": true, SKIN: true, HDR: false, COLOR: true, STABILIZATION: false } },
+  { name: "Cinema", tools: { "AUTO LIGHT": false, SKIN: false, HDR: true, COLOR: true, STABILIZATION: true } },
+] as const satisfies readonly { name: string; tools: Record<string, boolean> }[];
+
 const AI_TOOLS = ["AUTO LIGHT", "SKIN", "HDR", "COLOR", "STABILIZATION"] as const;
 
 function pad(n: number, size = 2) {
@@ -52,6 +58,9 @@ function CameraScreen() {
   const [flash, setFlash] = useState(false);
   const [timer, setTimer] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const [preset, setPreset] = useState("Standard");
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const interval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -69,6 +78,12 @@ function CameraScreen() {
   const timecode = `${pad(Math.floor(totalSeconds / 60))}:${pad(totalSeconds % 60)}:${pad(frames % 25)}`;
 
   const toggle = (key: string) => setActive((s) => ({ ...s, [key]: !s[key] }));
+
+  const applyPreset = (name: string, tools: Record<string, boolean>) => {
+    setPreset(name);
+    setActive((s) => ({ ...s, ...tools }));
+    setPresetsOpen(false);
+  };
 
   const onRec = () => {
     if (recording) {
@@ -207,6 +222,7 @@ function CameraScreen() {
 
         <div className="flex items-center justify-between">
           <button
+            onClick={() => setGalleryOpen(true)}
             aria-label="Gallery"
             className="size-12 overflow-hidden rounded-xl border border-border-strong active:scale-95"
           >
@@ -237,13 +253,67 @@ function CameraScreen() {
           </button>
 
           <button
+            onClick={() => setPresetsOpen((v) => !v)}
             aria-label="Presets"
             className="flex size-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/50 backdrop-blur-md active:scale-95"
           >
             <Sliders className="size-5 text-foreground" strokeWidth={1.6} />
-            <span className="text-[8px] uppercase tracking-widest text-muted-foreground">Set</span>
+            <span className="text-[8px] uppercase tracking-widest text-muted-foreground">
+              {preset === "Standard" ? "Set" : preset.slice(0, 3)}
+            </span>
           </button>
         </div>
+
+        {presetsOpen ? (
+          <div className="animate-rise mt-3 rounded-2xl border border-border-strong bg-background/80 p-2 backdrop-blur-xl">
+            <p className="px-1.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+              Camera presets
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.name}
+                  onClick={() => applyPreset(p.name, p.tools)}
+                  className={cn(
+                    "rounded-xl border px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] active:scale-95",
+                    preset === p.name
+                      ? "border-transparent bg-gradient-brand text-primary-foreground shadow-glow-sm"
+                      : "border-border bg-background/50 text-muted-foreground",
+                  )}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {galleryOpen ? (
+          <div className="animate-rise mt-3 rounded-2xl border border-border-strong bg-background/80 p-3 backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Recent media
+              </p>
+              <button
+                onClick={() => setGalleryOpen(false)}
+                className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-accent active:scale-95"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {[galleryThumb, cameraPreview, galleryThumb].map((src, i) => (
+                <button
+                  key={i}
+                  onClick={() => navigate({ to: "/editor" })}
+                  className="overflow-hidden rounded-lg border border-border active:scale-95"
+                >
+                  <img src={src} alt="Recent media" loading="lazy" className="aspect-[9/13] w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-3 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           <Images className="size-3.5" strokeWidth={1.6} />

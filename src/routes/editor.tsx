@@ -101,6 +101,7 @@ function EditorScreen() {
   const [added, setAdded] = useState<string[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const { timelineMedia } = useStudio();
   const mediaCount = useRef(timelineMedia.length);
@@ -178,7 +179,14 @@ function EditorScreen() {
       <div className="mx-auto w-full max-w-[560px] px-4">
         {/* Preview */}
         <section className="animate-rise mt-4">
-          <div className="relative overflow-hidden rounded-2xl border border-border">
+          <div
+            className={cn(
+              "relative overflow-hidden border border-border",
+              fullscreen
+                ? "fixed inset-0 z-50 flex flex-col justify-center rounded-none bg-background"
+                : "rounded-2xl",
+            )}
+          >
             <img
               src={editorFrame}
               alt="Video preview"
@@ -191,7 +199,8 @@ function EditorScreen() {
               Pour réussir dans le business, il faut comprendre son client.
             </p>
             <button
-              aria-label="Fullscreen"
+              onClick={() => setFullscreen((v) => !v)}
+              aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
               className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-lg border border-border bg-background/60 backdrop-blur-md active:scale-95"
             >
               <Maximize2 className="size-4" strokeWidth={1.7} />
