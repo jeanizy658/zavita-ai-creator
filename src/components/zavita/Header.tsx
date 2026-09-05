@@ -43,6 +43,12 @@ export function Header() {
       </div>
 
       {open ? (
+        <>
+        <button
+          aria-label="Close notifications overlay"
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-30 cursor-default"
+        />
         <div className="animate-rise absolute right-4 top-[64px] z-40 w-[min(320px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-border-strong bg-surface shadow-glow-sm">
           <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
             <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
@@ -96,6 +102,7 @@ export function Header() {
             })}
           </ul>
         </div>
+        </>
       ) : null}
     </header>
   );
