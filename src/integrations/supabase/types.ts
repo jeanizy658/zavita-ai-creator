@@ -14,7 +14,259 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          input: Json
+          output: Json | null
+          progress: number
+          project_id: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json
+          output?: Json | null
+          progress?: number
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json
+          output?: Json | null
+          progress?: number
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assets: {
+        Row: {
+          created_at: string
+          duration: number | null
+          file_url: string | null
+          id: string
+          metadata: Json
+          mime_type: string | null
+          name: string
+          project_id: string | null
+          size: number | null
+          storage_path: string | null
+          thumbnail_url: string | null
+          type: Database["public"]["Enums"]["asset_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: number | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          name: string
+          project_id?: string | null
+          size?: number | null
+          storage_path?: string | null
+          thumbnail_url?: string | null
+          type: Database["public"]["Enums"]["asset_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          name?: string
+          project_id?: string | null
+          size?: number | null
+          storage_path?: string | null
+          thumbnail_url?: string | null
+          type?: Database["public"]["Enums"]["asset_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration: number
+          id: string
+          settings: Json
+          status: Database["public"]["Enums"]["project_status"]
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration?: number
+          id?: string
+          settings?: Json
+          status?: Database["public"]["Enums"]["project_status"]
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration?: number
+          id?: string
+          settings?: Json
+          status?: Database["public"]["Enums"]["project_status"]
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      timeline_clips: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          duration: number
+          end_time: number
+          id: string
+          label: string | null
+          locked: boolean
+          opacity: number
+          position: number
+          project_id: string
+          rotation: number
+          scale: number
+          start_time: number
+          track_type: Database["public"]["Enums"]["track_type"]
+          updated_at: string
+          user_id: string
+          visible: boolean
+          volume: number
+          x: number
+          y: number
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          duration?: number
+          end_time?: number
+          id?: string
+          label?: string | null
+          locked?: boolean
+          opacity?: number
+          position?: number
+          project_id: string
+          rotation?: number
+          scale?: number
+          start_time?: number
+          track_type: Database["public"]["Enums"]["track_type"]
+          updated_at?: string
+          user_id: string
+          visible?: boolean
+          volume?: number
+          x?: number
+          y?: number
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          duration?: number
+          end_time?: number
+          id?: string
+          label?: string | null
+          locked?: boolean
+          opacity?: number
+          position?: number
+          project_id?: string
+          rotation?: number
+          scale?: number
+          start_time?: number
+          track_type?: Database["public"]["Enums"]["track_type"]
+          updated_at?: string
+          user_id?: string
+          visible?: boolean
+          volume?: number
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_clips_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_clips_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +275,21 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      asset_type:
+        | "VIDEO"
+        | "PHOTO"
+        | "AUDIO"
+        | "MUSIC"
+        | "VOICE"
+        | "IMAGE"
+        | "LOGO"
+        | "AI_VISUAL"
+        | "AI_VIDEO"
+        | "GRAPHIC"
+        | "TEXT"
+      job_status: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED"
+      project_status: "DRAFT" | "READY" | "SCHEDULED" | "PUBLISHED"
+      track_type: "MAIN" | "OVERLAY" | "PHOTO" | "TEXT" | "AI_VISUAL" | "AUDIO"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +416,23 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      asset_type: [
+        "VIDEO",
+        "PHOTO",
+        "AUDIO",
+        "MUSIC",
+        "VOICE",
+        "IMAGE",
+        "LOGO",
+        "AI_VISUAL",
+        "AI_VIDEO",
+        "GRAPHIC",
+        "TEXT",
+      ],
+      job_status: ["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"],
+      project_status: ["DRAFT", "READY", "SCHEDULED", "PUBLISHED"],
+      track_type: ["MAIN", "OVERLAY", "PHOTO", "TEXT", "AI_VISUAL", "AUDIO"],
+    },
   },
 } as const
