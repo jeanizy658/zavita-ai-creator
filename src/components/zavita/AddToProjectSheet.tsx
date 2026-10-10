@@ -15,6 +15,9 @@ import photo3 from "@/assets/proj-business.jpg";
 import bgOffice from "@/assets/bg-office.jpg";
 import bgStudio from "@/assets/bg-studio.jpg";
 import logoImg from "@/assets/zavita-logo.png";
+import { MyUploads } from "./MyUploads";
+import { useAuth } from "@/lib/auth";
+import { addClip, ensureActiveProject } from "@/lib/data";
 
 const CATEGORIES = [
   "VIDEO",
@@ -36,6 +39,7 @@ type Asset = {
   image?: string;
   track: TrackId;
   kind: "video" | "photo" | "audio" | "visual";
+  assetId?: string;
 };
 
 const LIBRARY: Record<string, Asset[]> = {
@@ -100,6 +104,8 @@ const kindIcon = {
 
 export function AddToProjectSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { addToTimeline } = useStudio();
+  const { user } = useAuth();
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [category, setCategory] = useState<string>("VIDEO");
   const [selected, setSelected] = useState<Asset[]>([]);
 
@@ -113,7 +119,31 @@ export function AddToProjectSheet({ open, onClose }: { open: boolean; onClose: (
       prev.some((s) => s.id === a.id) ? prev.filter((s) => s.id !== a.id) : [...prev, a],
     );
 
-  const confirm = () => {
+  const confirm = async () => {
+    setSaveError(null);
+    const real = selected.filter((s) => s.assetId);
+    if (real.length && user) {
+      try {
+        const project = await ensureActiveProject(user.id);
+        let cursor = 0;
+        for (const s of real) {
+          await addClip({
+            user_id: user.id,
+            project_id: project.id,
+            asset_id: s.assetId!,
+            label: s.title,
+            track_type: ({ main: "MAIN", overlay: "OVERLAY", photo: "PHOTO", text: "TEXT", ai: "AI_VISUAL", audio: "AUDIO" } as const)[s.track],
+            start_time: cursor,
+            end_time: cursor + s.seconds,
+            duration: s.seconds,
+          });
+          cursor += s.seconds;
+        }
+      } catch (e) {
+        setSaveError(e instanceof Error ? e.message : "Could not save to project.");
+        return;
+      }
+    }
     addToTimeline(
       selected.map((s) => ({
         trackId: s.track,
@@ -159,8 +189,14 @@ export function AddToProjectSheet({ open, onClose }: { open: boolean; onClose: (
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
+        <MyUploads
+          selectedIds={selected.map((s) => s.id)}
+          onToggle={(u) =>
+            toggle({ ...u, kind: u.track === "audio" ? "audio" : u.track === "main" ? "video" : "photo" })
+          }
+        />
         <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Recents
+          Sample library
         </p>
         <div className="grid grid-cols-2 gap-3">
           {items.map((a) => {
@@ -269,9 +305,10 @@ export function AddToProjectSheet({ open, onClose }: { open: boolean; onClose: (
             ))
           )}
         </div>
+        {saveError ? <p className="mt-2 text-[11px] text-destructive">{saveError}</p> : null}
         <button
           disabled={selected.length === 0}
-          onClick={confirm}
+          onClick={() => void confirm()}
           className="mt-3 w-full rounded-xl bg-gradient-brand py-3 text-[12px] font-extrabold uppercase tracking-[0.16em] text-primary-foreground shadow-glow-sm transition-all active:scale-[0.98] disabled:opacity-40"
         >
           Add ({selected.length})
