@@ -1,5 +1,8 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { ensureActiveProject, uploadAsset, type UploadState } from "@/lib/data";
+import { formatBytes } from "@/lib/media";
 import {
   ChevronLeft,
   Images,
@@ -62,6 +65,48 @@ function CameraScreen() {
   const [preset, setPreset] = useState("Standard");
   const [galleryOpen, setGalleryOpen] = useState(false);
   const interval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { user } = useAuth();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [camState, setCamState] = useState<"requesting" | "live" | "denied" | "unavailable">("requesting");
+  const [camError, setCamError] = useState<string | null>(null);
+  const [clip, setClip] = useState<{ blob: Blob; url: string } | null>(null);
+  const [upload, setUpload] = useState<UploadState>({ status: "IDLE" });
+
+  // Real camera + microphone access, re-requested when flipping lenses.
+  useEffect(() => {
+    let cancelled = false;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCamState("unavailable");
+      setCamError(window.isSecureContext ? "This browser does not support camera access." : "Camera requires a secure (HTTPS) connection.");
+      return;
+    }
+    setCamState("requesting");
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: flipped ? "environment" : "user" }, audio: true })
+      .then((stream) => {
+        if (cancelled) return stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        setCamState("live");
+        setCamError(null);
+      })
+      .catch((err: DOMException) => {
+        if (cancelled) return;
+        const denied = err.name === "NotAllowedError" || err.name === "SecurityError";
+        setCamState(denied ? "denied" : "unavailable");
+        setCamError(denied ? "Camera and microphone permission was denied. Allow access in your browser settings." : err.name === "NotFoundError" ? "No camera was found on this device." : err.message);
+      });
+    return () => {
+      cancelled = true;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, [flipped]);
+
+  useEffect(() => () => { if (clip) URL.revokeObjectURL(clip.url); }, [clip]);
 
   useEffect(() => {
     if (!recording) {
@@ -87,23 +132,76 @@ function CameraScreen() {
 
   const onRec = () => {
     if (recording) {
+      recorderRef.current?.stop();
       setRecording(false);
+      return;
+    }
+    const stream = streamRef.current;
+    if (!stream || camState !== "live") {
+      setCamError(camError ?? "Camera is not available.");
+      return;
+    }
+    const mime = ["video/webm;codecs=vp9,opus", "video/webm", "video/mp4"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+    rec.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType.split(";")[0] || "video/webm" });
+      setClip({ blob, url: URL.createObjectURL(blob) });
       setHasClip(true);
-    } else {
-      setFrames(0);
-      setHasClip(false);
-      setRecording(true);
+      setUpload({ status: "IDLE" });
+    };
+    recorderRef.current = rec;
+    rec.start(1000);
+    setFrames(0);
+    setHasClip(false);
+    setRecording(true);
+  };
+
+  const editClip = async () => {
+    if (!clip) return navigate({ to: "/editor" });
+    if (!user) return navigate({ to: "/auth" });
+    try {
+      const ext = clip.blob.type.includes("mp4") ? "mp4" : "webm";
+      const project = await ensureActiveProject(user.id);
+      await uploadAsset({ userId: user.id, projectId: project.id, file: clip.blob, filename: `recording-${Date.now()}.${ext}`, onState: setUpload });
+      navigate({ to: "/editor" });
+    } catch {
+      /* upload state shows the error */
     }
   };
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-black">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className={cn(
+          "absolute inset-0 size-full object-cover transition-all duration-500",
+          !flipped && "scale-x-[-1]",
+          active["COLOR"] && "saturate-150 contrast-110",
+          active["SKIN"] && "brightness-105",
+          camState !== "live" && "opacity-0",
+        )}
+        style={{ transform: `${!flipped ? "scaleX(-1) " : ""}scale(${zoom})` }}
+      />
+      {camState !== "live" ? (
+        <div className="absolute inset-x-6 top-1/3 z-20 rounded-2xl border border-border bg-background/80 p-4 text-center backdrop-blur-xl" role="status">
+          <p className="text-[12px] font-bold uppercase tracking-[0.16em]">
+            {camState === "requesting" ? "Requesting camera access…" : "Camera unavailable"}
+          </p>
+          {camError ? <p className="mt-1.5 text-[11.5px] text-muted-foreground">{camError}</p> : null}
+        </div>
+      ) : null}
       <img
         src={cameraPreview}
-        alt="Camera preview of a creator in a studio"
+        alt=""
+        aria-hidden="true"
         width={720}
         height={1280}
-        className={cn(
+        className={cn(camState === "live" && "hidden", "opacity-30",
           "absolute inset-0 size-full object-cover transition-all duration-500",
           flipped && "scale-x-[-1]",
           active["COLOR"] && "saturate-150 contrast-110",
@@ -199,20 +297,24 @@ function CameraScreen() {
 
         {hasClip ? (
           <div className="animate-rise mb-5 flex items-center gap-3 rounded-2xl border border-border bg-background/70 p-3 backdrop-blur-xl">
-            <img
-              src={galleryThumb}
-              alt="Recorded clip"
-              loading="lazy"
-              width={512}
-              height={768}
-              className="size-12 rounded-lg object-cover"
-            />
+            {clip ? (
+              <video src={clip.url} muted playsInline className="size-12 rounded-lg object-cover" />
+            ) : null}
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-semibold">New recording</p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">{timecode} · Ready</p>
+              <p className="text-[11px] tabular-nums text-muted-foreground">
+                {upload.status === "UPLOADING"
+                  ? `Uploading ${upload.progress}%`
+                  : upload.status === "PROCESSING" || upload.status === "SELECTED"
+                    ? "Saving…"
+                    : upload.status === "FAILED"
+                      ? upload.error
+                      : `${timecode} · ${clip ? formatBytes(clip.blob.size) : ""}`}
+              </p>
             </div>
             <button
-              onClick={() => navigate({ to: "/editor" })}
+              disabled={upload.status === "UPLOADING" || upload.status === "PROCESSING"}
+              onClick={() => void editClip()}
               className="flex items-center gap-1.5 rounded-xl bg-gradient-brand px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary-foreground shadow-glow-sm active:scale-95"
             >
               <Wand2 className="size-3.5" strokeWidth={2} /> Edit video
