@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -225,8 +226,10 @@ function ProfileScreen() {
 
       <button
         onClick={() => {
-          flash("Signed out of this session");
-          setTimeout(() => navigate({ to: "/home" }), 700);
+          void supabase.auth.signOut().then(() => {
+            flash("Signed out");
+            setTimeout(() => navigate({ to: "/auth" }), 700);
+          });
         }}
         className="animate-rise mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground active:scale-[0.98]"
       >
