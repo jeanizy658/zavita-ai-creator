@@ -1,5 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { createProject, listProjects } from "@/lib/data";
+import { signedUrl } from "@/lib/storage";
 import { Plus, Search } from "lucide-react";
 import { AppShell } from "@/components/zavita/AppShell";
 import { Header } from "@/components/zavita/Header";
@@ -33,7 +36,7 @@ type Project = {
   status: "Published" | "Scheduled" | "Draft";
 };
 
-const PROJECTS: Project[] = [
+const SAMPLE_PROJECTS: Project[] = [
   { title: "Business Tips", duration: "02:15", date: "Today", thumbnail: businessThumb, status: "Draft" },
   { title: "Travel Vlog", duration: "01:28", date: "Yesterday", thumbnail: travelThumb, status: "Scheduled" },
   { title: "Product Review", duration: "00:58", date: "2 days ago", thumbnail: productThumb, status: "Published" },
@@ -48,7 +51,40 @@ function ProjectsScreen() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
   const [query, setQuery] = useState("");
+  const { user } = useAuth();
+  const [real, setReal] = useState<Project[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!user) return setReal(null);
+    listProjects()
+      .then(async (rows) =>
+        setReal(
+          await Promise.all(
+            rows.map(async (r) => ({
+              title: r.title,
+              duration: `${String(Math.floor(Number(r.duration) / 60)).padStart(2, "0")}:${String(Math.round(Number(r.duration)) % 60).padStart(2, "0")}`,
+              date: new Date(r.updated_at).toLocaleDateString(),
+              thumbnail: (await signedUrl(r.thumbnail_url)) ?? businessThumb,
+              status: (r.status === "PUBLISHED" ? "Published" : r.status === "SCHEDULED" ? "Scheduled" : "Draft") as Project["status"],
+            })),
+          ),
+        ),
+      )
+      .catch((e: Error) => setError(e.message));
+  }, [user]);
+
+  const newProject = async () => {
+    if (!user) return navigate({ to: "/auth" });
+    try {
+      await createProject(user.id, `Project ${new Date().toLocaleDateString()}`);
+    } catch (e) {
+      return setError(e instanceof Error ? e.message : "Could not create project.");
+    }
+    navigate({ to: "/camera" });
+  };
+
+  const PROJECTS = real ?? SAMPLE_PROJECTS;
   const list = PROJECTS.filter(
     (p) =>
       (filter === "All" || p.status === filter) &&
@@ -94,6 +130,10 @@ function ProjectsScreen() {
         </div>
       </section>
 
+      {error ? <p className="mt-3 text-[11px] text-destructive">{error}</p> : null}
+      {!user ? (
+        <p className="mt-3 text-[11px] text-muted-foreground">Showing samples. <a href="/auth" className="text-accent">Sign in</a> to see your saved projects.</p>
+      ) : null}
       <section className="animate-rise mt-5">
         {list.length === 0 ? (
           <div className="surface-card flex flex-col items-center gap-3 px-5 py-10 text-center">
@@ -111,7 +151,7 @@ function ProjectsScreen() {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {list.map((p) => (
-              <div key={p.title} className="relative">
+              <div key={p.title + p.date} className="relative">
                 <ProjectCard
                   thumbnail={p.thumbnail}
                   title={p.title}
@@ -139,7 +179,7 @@ function ProjectsScreen() {
       </section>
 
       <button
-        onClick={() => navigate({ to: "/camera" })}
+        onClick={() => void newProject()}
         className="animate-rise mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-brand py-3.5 text-[11.5px] font-extrabold uppercase tracking-[0.16em] text-primary-foreground shadow-glow-sm active:scale-[0.98]"
       >
         <Plus className="size-4" strokeWidth={2.4} /> New project
