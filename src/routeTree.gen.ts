@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiBackgroundRouteImport } from './routes/ai-background'
 import { Route as AiEnhanceRouteImport } from './routes/ai-enhance'
 import { Route as AiVoiceRouteImport } from './routes/ai-voice'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AvatarRouteImport } from './routes/avatar'
 import { Route as CameraRouteImport } from './routes/camera'
 import { Route as EditorRouteImport } from './routes/editor'
@@ -41,6 +42,11 @@ const AiEnhanceRoute = AiEnhanceRouteImport.update({
 const AiVoiceRoute = AiVoiceRouteImport.update({
   id: '/ai-voice',
   path: '/ai-voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AvatarRoute = AvatarRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
   '/ai-voice': typeof AiVoiceRoute
+  '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/editor': typeof EditorRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
   '/ai-voice': typeof AiVoiceRoute
+  '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/editor': typeof EditorRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
   '/ai-voice': typeof AiVoiceRoute
+  '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
   '/camera': typeof CameraRoute
   '/editor': typeof EditorRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/ai-background'
     | '/ai-enhance'
     | '/ai-voice'
+    | '/auth'
     | '/avatar'
     | '/camera'
     | '/editor'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/ai-background'
     | '/ai-enhance'
     | '/ai-voice'
+    | '/auth'
     | '/avatar'
     | '/camera'
     | '/editor'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/ai-background'
     | '/ai-enhance'
     | '/ai-voice'
+    | '/auth'
     | '/avatar'
     | '/camera'
     | '/editor'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   AiBackgroundRoute: typeof AiBackgroundRoute
   AiEnhanceRoute: typeof AiEnhanceRoute
   AiVoiceRoute: typeof AiVoiceRoute
+  AuthRoute: typeof AuthRoute
   AvatarRoute: typeof AvatarRoute
   CameraRoute: typeof CameraRoute
   EditorRoute: typeof EditorRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/ai-voice'
       fullPath: '/ai-voice'
       preLoaderRoute: typeof AiVoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/avatar': {
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiBackgroundRoute: AiBackgroundRoute,
   AiEnhanceRoute: AiEnhanceRoute,
   AiVoiceRoute: AiVoiceRoute,
+  AuthRoute: AuthRoute,
   AvatarRoute: AvatarRoute,
   CameraRoute: CameraRoute,
   EditorRoute: EditorRoute,
