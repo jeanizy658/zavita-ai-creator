@@ -1,4 +1,9 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+
+import { useAuth } from "@/lib/auth";
+import { createProject, getProject, listClips, type Asset } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
+import { signedUrl } from "@/lib/storage";
 
 export type TrackId = "main" | "overlay" | "photo" | "text" | "ai" | "audio";
 
@@ -8,6 +13,11 @@ export type TimelineMedia = {
   label: string;
   image?: string | undefined;
   duration: number;
+  start?: number;
+  assetId?: string;
+  source?: string;
+  assetType?: string;
+  visible?: boolean;
 };
 
 export type EnhanceMode = "Natural" | "Balanced" | "Pro";
@@ -33,6 +43,13 @@ type VoiceValues = {
 
 type StudioValue = {
   projectName: string;
+  projectId: string | null;
+  projectLoading: boolean;
+  projectError: string | null;
+  openProject: (id: string) => Promise<void>;
+  ensureProject: () => Promise<string>;
+  refreshProject: () => Promise<void>;
+
   timelineMedia: TimelineMedia[];
   addToTimeline: (items: Omit<TimelineMedia, "id">[]) => void;
   selectedMedia: string[];
@@ -95,8 +112,68 @@ type StudioValue = {
 const StudioContext = createContext<StudioValue | null>(null);
 
 export function StudioProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("New project");
+  const [projectLoading, setProjectLoading] = useState(false);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const request = useRef(0);
+  const ensurePending = useRef<Promise<string> | null>(null);
   const [timelineMedia, setTimelineMedia] = useState<TimelineMedia[]>([]);
   const [selectedMedia, setSelectedMedia] = useState<string[]>([]);
+
+  const openProject = useCallback(async (id: string) => {
+    if (!user) throw new Error("Sign in to open a saved project.");
+    const ticket = ++request.current;
+    setProjectLoading(true); setProjectError(null); setTimelineMedia([]);
+    try {
+      const project = await getProject(id);
+      if (!project || project.user_id !== user.id) throw new Error("This project is not available to your account.");
+      const clips = await listClips(id);
+      const assetIds = [...new Set(clips.flatMap((c) => c.asset_id ? [c.asset_id] : []))];
+      let assets: Asset[] = [];
+      if (assetIds.length) {
+        const { data, error } = await supabase.from("assets").select("*").in("id", assetIds);
+        if (error) throw new Error(error.message);
+        assets = data ?? [];
+      }
+      const hydrated = await Promise.all(clips.map(async (clip) => {
+        const asset = assets.find((a) => a.id === clip.asset_id);
+        const image = await signedUrl(asset?.thumbnail_url);
+        const source = await signedUrl(asset?.storage_path ?? asset?.file_url);
+        return { id: clip.id, trackId: ({ MAIN: "main", OVERLAY: "overlay", PHOTO: "photo", TEXT: "text", AI_VISUAL: "ai", AUDIO: "audio" } as const)[clip.track_type],
+          label: clip.label ?? asset?.name ?? "Media", duration: Number(clip.duration), start: Number(clip.start_time),
+          assetId: asset?.id, assetType: asset?.type, image: image ?? undefined, source: source ?? undefined, visible: clip.visible };
+      }));
+      if (ticket !== request.current) return;
+      setProjectId(project.id); setProjectName(project.title); setTimelineMedia(hydrated);
+      localStorage.setItem(`zavita-project-${user.id}`, project.id);
+    } catch (e) {
+      if (ticket === request.current) { setProjectId(null); setProjectError(e instanceof Error ? e.message : "Could not restore project."); }
+      throw e;
+    } finally { if (ticket === request.current) setProjectLoading(false); }
+  }, [user?.id]);
+  const ensureProject = useCallback(async () => {
+    if (!user) throw new Error("Sign in to save your media.");
+    if (projectId) return projectId;
+    if (ensurePending.current) return ensurePending.current;
+    const pending = (async () => {
+      const stored = localStorage.getItem(`zavita-project-${user.id}`);
+      if (stored) { await openProject(stored); return stored; }
+      const project = await createProject(user.id);
+      await openProject(project.id); return project.id;
+    })();
+    ensurePending.current = pending;
+    try { return await pending; } finally { ensurePending.current = null; }
+  }, [user?.id, projectId, openProject]);
+  const refreshProject = useCallback(async () => { if (projectId) await openProject(projectId); }, [projectId, openProject]);
+  useEffect(() => {
+    request.current++; ensurePending.current = null;
+    setProjectId(null); setProjectName("New project"); setTimelineMedia([]); setSelectedMedia([]); setProjectError(null); setProjectLoading(false);
+    if (!user) return;
+    const stored = localStorage.getItem(`zavita-project-${user.id}`);
+    if (stored) void openProject(stored).catch(() => {});
+  }, [user?.id, openProject]);
 
   const [enhanceMode, setEnhanceMode] = useState<EnhanceMode>("Balanced");
   const [enhanceIntensity, setEnhanceIntensity] = useState(50);
@@ -142,7 +219,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StudioValue>(
     () => ({
-      projectName: "Business Tips",
+      projectName, projectId, projectLoading, projectError, openProject, ensureProject, refreshProject,
       timelineMedia,
       addToTimeline: (items) =>
         setTimelineMedia((prev) => [
@@ -205,6 +282,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       setPublishStatus,
     }),
     [
+      projectName, projectId, projectLoading, projectError, openProject, ensureProject, refreshProject,
       timelineMedia,
       selectedMedia,
       enhanceMode,

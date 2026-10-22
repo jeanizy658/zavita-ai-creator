@@ -43,7 +43,7 @@ export function validateFile(file: File): { kind: MediaKind } | { error: string 
   const kind = kindOfFile(file);
   if (!kind) return { error: `Unsupported file type: ${file.type || "unknown"}.` };
   const rule = MEDIA_RULES[kind];
-  if (file.type && !rule.mimes.includes(file.type.toLowerCase())) {
+  if (file.type && !rule.mimes.includes(file.type.toLowerCase().split(";")[0] ?? "")) {
     return { error: `Unsupported ${kind} format (${file.type}).` };
   }
   if (file.size > rule.maxBytes) {
@@ -53,65 +53,71 @@ export function validateFile(file: File): { kind: MediaKind } | { error: string 
   return { kind };
 }
 
-/** Reads real media duration from the file in the browser. */
+/** Probe playable media with a bounded timeout, including WebM's infinite-duration metadata. */
 export function probeDuration(file: File, kind: MediaKind): Promise<number | null> {
   if (kind === "image") return Promise.resolve(null);
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const el = document.createElement(kind === "video" ? "video" : "audio");
+    let finished = false;
     const done = (value: number | null) => {
-      URL.revokeObjectURL(url);
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      el.onloadedmetadata = null; el.ondurationchange = null; el.ontimeupdate = null; el.onerror = null;
+      el.pause(); el.removeAttribute("src"); el.load(); URL.revokeObjectURL(url);
       resolve(value);
     };
+    const timeout = setTimeout(() => done(null), 15000);
+    const read = () => {
+      if (Number.isFinite(el.duration) && el.duration > 0) done(el.duration);
+    };
     el.preload = "metadata";
-    el.onloadedmetadata = () => done(Number.isFinite(el.duration) ? el.duration : null);
+    el.onloadedmetadata = () => {
+      if (Number.isFinite(el.duration) && el.duration > 0) read();
+      else { try { el.currentTime = 1e10; } catch { done(null); } }
+    };
+    el.ondurationchange = read;
+    el.ontimeupdate = read;
     el.onerror = () => done(null);
     el.src = url;
   });
 }
 
-/** Grabs a real frame from a video file (or downsizes an image) as a JPEG thumbnail. */
+/** Generate only actual image pixels or video frames; return null when unsupported. */
 export function generateThumbnail(file: File, kind: MediaKind): Promise<Blob | null> {
   if (kind === "audio") return Promise.resolve(null);
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
+    let finished = false;
+    const video = kind === "video" ? document.createElement("video") : null;
     const finish = (blob: Blob | null) => {
-      URL.revokeObjectURL(url);
-      resolve(blob);
+      if (finished) return;
+      finished = true; clearTimeout(timeout);
+      if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
+      URL.revokeObjectURL(url); resolve(blob);
     };
+    const timeout = setTimeout(() => finish(null), 8000);
     const draw = (source: CanvasImageSource, w: number, h: number) => {
-      const max = 480;
-      const ratio = Math.min(max / w, max / h, 1);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(w * ratio));
-      canvas.height = Math.max(1, Math.round(h * ratio));
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return finish(null);
-      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((b) => finish(b), "image/jpeg", 0.82);
+      if (finished || !w || !h) return finish(null);
+      try {
+        const ratio = Math.min(480 / w, 480 / h, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(w * ratio)); canvas.height = Math.max(1, Math.round(h * ratio));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return finish(null);
+        ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(finish, "image/jpeg", 0.82);
+      } catch { finish(null); }
     };
-
-    if (kind === "image") {
+    if (!video) {
       const img = new Image();
       img.onload = () => draw(img, img.naturalWidth, img.naturalHeight);
-      img.onerror = () => finish(null);
-      img.src = url;
-      return;
+      img.onerror = () => finish(null); img.src = url; return;
     }
-
-    const video = document.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "metadata";
-    video.onloadeddata = () => {
-      try {
-        video.currentTime = Math.min(0.5, (video.duration || 1) / 2);
-      } catch {
-        draw(video, video.videoWidth, video.videoHeight);
-      }
-    };
+    video.muted = true; video.playsInline = true; video.preload = "auto";
+    video.onloadeddata = () => { try { video.currentTime = Math.min(0.1, Number.isFinite(video.duration) ? video.duration / 2 : 0.1); } catch { draw(video, video.videoWidth, video.videoHeight); } };
     video.onseeked = () => draw(video, video.videoWidth, video.videoHeight);
-    video.onerror = () => finish(null);
-    video.src = url;
+    video.onerror = () => finish(null); video.src = url;
   });
 }
