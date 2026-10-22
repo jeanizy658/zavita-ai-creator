@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { generateThumbnail, probeDuration, validateFile, type MediaKind } from "@/lib/media";
-import { uploadToStorage } from "@/lib/storage";
+import { assetDuration, appendPositions } from "@/lib/media-workflow";
+import { removeFromStorage, uploadToStorage } from "@/lib/storage";
 
 export type Project = Database["public"]["Tables"]["projects"]["Row"];
 export type Asset = Database["public"]["Tables"]["assets"]["Row"];
@@ -38,13 +39,15 @@ export async function createProject(userId: string, title = "Untitled project"):
     .select("*")
     .single();
   fail(error);
-  return data!;
+  if (!data) throw new Error("No saved record was returned.");
+  return data;
 }
 
 export async function updateProject(id: string, patch: Database["public"]["Tables"]["projects"]["Update"]) {
   const { data, error } = await supabase.from("projects").update(patch).eq("id", id).select("*").single();
   fail(error);
-  return data!;
+  if (!data) throw new Error("No saved record was returned.");
+  return data;
 }
 
 export async function deleteProject(id: string) {
@@ -117,9 +120,11 @@ export async function uploadAsset(opts: {
     throw new Error(checked.error);
   }
 
+  const uploadedPaths: string[] = [];
   try {
     opts.onState({ status: "SELECTED", name: filename });
     const duration = await probeDuration(file, checked.kind);
+    if (checked.kind !== "image") assetDuration(opts.assetType ?? KIND_TO_TYPE[checked.kind], duration);
     const thumb = await generateThumbnail(file, checked.kind);
 
     opts.onState({ status: "UPLOADING", name: filename, progress: 0 });
@@ -127,10 +132,12 @@ export async function uploadAsset(opts: {
       opts.onState({ status: "UPLOADING", name: filename, progress: p }),
     ).promise;
 
+    uploadedPaths.push(path);
     opts.onState({ status: "PROCESSING", name: filename });
     let thumbPath: string | null = null;
     if (thumb) {
       thumbPath = await uploadToStorage(opts.userId, thumb, `${filename}.thumb.jpg`).promise;
+      uploadedPaths.push(thumbPath);
     }
 
     const { data, error } = await supabase
@@ -149,9 +156,12 @@ export async function uploadAsset(opts: {
       .select("*")
       .single();
     fail(error);
-    opts.onState({ status: "READY", asset: data! });
-    return data!;
+    if (!data) throw new Error("Media metadata was not saved.");
+    opts.onState({ status: "READY", asset: data });
+    if (!data) throw new Error("No saved record was returned.");
+  return data;
   } catch (e) {
+    await Promise.allSettled(uploadedPaths.map(removeFromStorage));
     const message = e instanceof Error ? e.message : "Upload failed. Please try again.";
     opts.onState({ status: "FAILED", name: filename, error: message });
     throw e;
@@ -173,7 +183,8 @@ export async function listClips(projectId: string): Promise<TimelineClip[]> {
 export async function addClip(clip: Database["public"]["Tables"]["timeline_clips"]["Insert"]) {
   const { data, error } = await supabase.from("timeline_clips").insert(clip).select("*").single();
   fail(error);
-  return data!;
+  if (!data) throw new Error("No saved record was returned.");
+  return data;
 }
 
 export async function updateClip(
@@ -182,7 +193,8 @@ export async function updateClip(
 ) {
   const { data, error } = await supabase.from("timeline_clips").update(patch).eq("id", id).select("*").single();
   fail(error);
-  return data!;
+  if (!data) throw new Error("No saved record was returned.");
+  return data;
 }
 
 export async function deleteClip(id: string) {
@@ -203,11 +215,32 @@ export async function listJobs(projectId?: string | null): Promise<AiJob[]> {
 export async function createJob(job: Database["public"]["Tables"]["ai_jobs"]["Insert"]) {
   const { data, error } = await supabase.from("ai_jobs").insert(job).select("*").single();
   fail(error);
-  return data!;
+  if (!data) throw new Error("No saved record was returned.");
+  return data;
 }
 
 export async function updateJob(id: string, patch: Database["public"]["Tables"]["ai_jobs"]["Update"]) {
   const { data, error } = await supabase.from("ai_jobs").update(patch).eq("id", id).select("*").single();
   fail(error);
-  return data!;
+  if (!data) throw new Error("No saved record was returned.");
+  return data;
+}
+
+
+/** Validate project ownership and append one atomic batch without replacing clips. */
+export async function appendAssets(userId: string, projectId: string, items: { assetId: string; track: TrackType; duration: number; label: string }[]) {
+  const project = await getProject(projectId);
+  if (!project || project.user_id !== userId) throw new Error("This project is not available to your account.");
+  const existing = await listClips(projectId);
+  const placements = appendPositions(existing, items);
+  const rows = items.map((item, index) => ({
+    user_id: userId, project_id: projectId, asset_id: item.assetId,
+    track_type: item.track, label: item.label, duration: item.duration,
+    ...placements[index],
+  }));
+  if (!rows.length) return [];
+  const { data, error } = await supabase.from("timeline_clips").insert(rows).select("*");
+  fail(error);
+  if (!data?.length) throw new Error("Media was not added to the project.");
+  return data;
 }

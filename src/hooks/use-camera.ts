@@ -58,7 +58,7 @@ export function useCamera() {
       const caps = track.getCapabilities?.() as CameraCapabilities | undefined;
       setCapabilities(caps ?? {});
       setTorch(false);
-      setZoom(track.getSettings().zoom ?? caps?.zoom?.min ?? 1);
+      setZoom((track.getSettings() as MediaTrackSettings & { zoom?: number }).zoom ?? caps?.zoom?.min ?? 1);
       if (videoRef.current) { videoRef.current.srcObject = acquired; await videoRef.current.play(); }
       setState("READY");
       const devices = await navigator.mediaDevices.enumerateDevices();

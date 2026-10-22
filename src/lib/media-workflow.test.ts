@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { appendPositions, assetDuration, recordingMime, trackForAsset } from "./media-workflow";
 
 describe("real media workflow rules", () => {
@@ -18,7 +18,7 @@ describe("real media workflow rules", () => {
     expect(appendPositions(existing, [{ track: "MAIN", duration: 2 }, { track: "AUDIO", duration: 3 }, { track: "MAIN", duration: 1 }])).toEqual([
       { start_time: 12.5, end_time: 14.5, position: 3 }, { start_time: 4, end_time: 7, position: 1 }, { start_time: 14.5, end_time: 15.5, position: 4 },
     ]);
-    expect(existing[0].end_time).toBe(12.5);
+    expect(existing[0]?.end_time).toBe(12.5);
   });
   test("recording chooses only a browser-supported format", () => {
     expect(recordingMime((mime) => mime === "video/mp4")).toBe("video/mp4");

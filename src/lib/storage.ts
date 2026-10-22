@@ -41,10 +41,16 @@ export function uploadToStorage(
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) resolve(path);
-        else reject(new Error(`Upload failed (${xhr.status}). Please try again.`));
+        else {
+          let message = `Upload failed (${xhr.status}). Please retry.`;
+          try { const body = JSON.parse(xhr.responseText); message = body.message ?? body.error ?? message; } catch { /* response may be non-JSON */ }
+          reject(new Error(message));
+        }
       };
       xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
       xhr.onabort = () => reject(new Error("Upload cancelled."));
+      xhr.timeout = 10 * 60 * 1000;
+      xhr.ontimeout = () => reject(new Error("Upload timed out. Check your connection and retry."));
       xhr.send(file);
     });
   })();
@@ -57,6 +63,7 @@ const signedCache = new Map<string, { url: string; expires: number }>();
 /** Returns a time-limited signed URL for a private stored file. */
 export async function signedUrl(path: string | null | undefined, expiresIn = 3600) {
   if (!path) return null;
+  if (path.startsWith("https://")) return path;
   const cached = signedCache.get(path);
   if (cached && cached.expires > Date.now()) return cached.url;
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, expiresIn);
@@ -66,5 +73,6 @@ export async function signedUrl(path: string | null | undefined, expiresIn = 360
 }
 
 export async function removeFromStorage(path: string) {
-  await supabase.storage.from(BUCKET).remove([path]);
+  const { error } = await supabase.storage.from(BUCKET).remove([path]);
+  if (error) throw new Error(error.message);
 }
