@@ -22,6 +22,8 @@ export const Route = createFileRoute("/ai-background")({
       },
       { property: "og:title", content: "AI Background — ZAVITA" },
       { property: "og:description", content: "Blur or generate a new background with AI." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AiBackgroundScreen,

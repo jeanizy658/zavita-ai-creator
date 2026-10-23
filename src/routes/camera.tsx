@@ -1,460 +1,124 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useRef, useState } from "react";
+import { ChevronLeft, Images, RefreshCw, Sliders, Timer, Zap, ZoomIn, Mic, Download, Wand2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AddToProjectSheet } from "@/components/zavita/AddToProjectSheet";
+import { useCamera } from "@/hooks/use-camera";
 import { useAuth } from "@/lib/auth";
-import { ensureActiveProject, uploadAsset, type UploadState } from "@/lib/data";
-import { formatBytes } from "@/lib/media";
-import {
-  ChevronLeft,
-  Images,
-  RefreshCw,
-  Sliders,
-  Sparkles,
-  Timer,
-  Zap,
-  ZoomIn,
-  Wand2,
-} from "lucide-react";
+import { useStudio } from "@/lib/studio-store";
+import { appendAssets, uploadAsset, type Asset, type UploadState } from "@/lib/data";
+import { assetDuration } from "@/lib/media-workflow";
+import { formatBytes, formatDuration } from "@/lib/media";
 import { cn } from "@/lib/utils";
-import cameraPreview from "@/assets/camera-preview.jpg";
-import galleryThumb from "@/assets/proj-business.jpg";
 
 export const Route = createFileRoute("/camera")({
-  head: () => ({
-    meta: [
-      { title: "AI Camera — ZAVITA" },
-      {
-        name: "description",
-        content: "Record with the ZAVITA AI camera: auto light, skin, HDR, color and stabilization.",
-      },
-      { property: "og:title", content: "AI Camera — ZAVITA" },
-      { property: "og:description", content: "Record a video with the ZAVITA AI camera." },
-    ],
-  }),
-  component: CameraScreen,
+  head: () => ({ meta: [
+    { title: "AI Camera — ZAVITA" },
+    { name: "description", content: "Capture and preview real device video, or import media into your ZAVITA project." },
+    { property: "og:title", content: "AI Camera — ZAVITA" },
+    { property: "og:description", content: "Record real device video and import your own media." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" },
+  ] }), component: CameraScreen,
 });
 
-const PRESETS = [
-  { name: "Standard", tools: { "AUTO LIGHT": true, SKIN: false, HDR: true, COLOR: false, STABILIZATION: false } },
-  { name: "Beauty", tools: { "AUTO LIGHT": true, SKIN: true, HDR: false, COLOR: true, STABILIZATION: false } },
-  { name: "Cinema", tools: { "AUTO LIGHT": false, SKIN: false, HDR: true, COLOR: true, STABILIZATION: true } },
-] as const satisfies readonly { name: string; tools: Record<string, boolean> }[];
-
-const AI_TOOLS = ["AUTO LIGHT", "SKIN", "HDR", "COLOR", "STABILIZATION"] as const;
-
-function pad(n: number, size = 2) {
-  return String(n).padStart(size, "0");
-}
-
 function CameraScreen() {
+  const camera = useCamera();
   const navigate = useNavigate();
-  const [active, setActive] = useState<Record<string, boolean>>({
-    "AUTO LIGHT": true,
-    SKIN: false,
-    HDR: true,
-    COLOR: false,
-    STABILIZATION: false,
-  });
-  const [recording, setRecording] = useState(false);
-  const [frames, setFrames] = useState(0);
-  const [hasClip, setHasClip] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [flash, setFlash] = useState(false);
-  const [timer, setTimer] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const [presetsOpen, setPresetsOpen] = useState(false);
-  const [preset, setPreset] = useState("Standard");
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const interval = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user } = useAuth();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const [camState, setCamState] = useState<"requesting" | "live" | "denied" | "unavailable">("requesting");
-  const [camError, setCamError] = useState<string | null>(null);
-  const [clip, setClip] = useState<{ blob: Blob; url: string } | null>(null);
+  const { ensureProject, refreshProject } = useStudio();
+  const [timer, setTimer] = useState(0);
+  const [audio, setAudio] = useState(true);
+  const [settings, setSettings] = useState(false);
+  const [gallery, setGallery] = useState(false);
   const [upload, setUpload] = useState<UploadState>({ status: "IDLE" });
-
-  // Real camera + microphone access, re-requested when flipping lenses.
-  useEffect(() => {
-    let cancelled = false;
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCamState("unavailable");
-      setCamError(window.isSecureContext ? "This browser does not support camera access." : "Camera requires a secure (HTTPS) connection.");
-      return;
-    }
-    setCamState("requesting");
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: flipped ? "environment" : "user" }, audio: true })
-      .then((stream) => {
-        if (cancelled) return stream.getTracks().forEach((t) => t.stop());
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        setCamState("live");
-        setCamError(null);
-      })
-      .catch((err: DOMException) => {
-        if (cancelled) return;
-        const denied = err.name === "NotAllowedError" || err.name === "SecurityError";
-        setCamState(denied ? "denied" : "unavailable");
-        setCamError(denied ? "Camera and microphone permission was denied. Allow access in your browser settings." : err.name === "NotFoundError" ? "No camera was found on this device." : err.message);
-      });
-    return () => {
-      cancelled = true;
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    };
-  }, [flipped]);
-
-  useEffect(() => () => { if (clip) URL.revokeObjectURL(clip.url); }, [clip]);
-
-  useEffect(() => {
-    if (!recording) {
-      if (interval.current) clearInterval(interval.current);
-      return;
-    }
-    interval.current = setInterval(() => setFrames((f) => f + 1), 1000 / 25);
-    return () => {
-      if (interval.current) clearInterval(interval.current);
-    };
-  }, [recording]);
-
-  const totalSeconds = Math.floor(frames / 25);
-  const timecode = `${pad(Math.floor(totalSeconds / 60))}:${pad(totalSeconds % 60)}:${pad(frames % 25)}`;
-
-  const toggle = (key: string) => setActive((s) => ({ ...s, [key]: !s[key] }));
-
-  const applyPreset = (name: string, tools: Record<string, boolean>) => {
-    setPreset(name);
-    setActive((s) => ({ ...s, ...tools }));
-    setPresetsOpen(false);
-  };
-
-  const onRec = () => {
-    if (recording) {
-      recorderRef.current?.stop();
-      setRecording(false);
-      return;
-    }
-    const stream = streamRef.current;
-    if (!stream || camState !== "live") {
-      setCamError(camError ?? "Camera is not available.");
-      return;
-    }
-    const mime = ["video/webm;codecs=vp9,opus", "video/webm", "video/mp4"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
-    const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-    chunksRef.current = [];
-    rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
-    rec.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: rec.mimeType.split(";")[0] || "video/webm" });
-      setClip({ blob, url: URL.createObjectURL(blob) });
-      setHasClip(true);
-      setUpload({ status: "IDLE" });
-    };
-    recorderRef.current = rec;
-    rec.start(1000);
-    setFrames(0);
-    setHasClip(false);
-    setRecording(true);
-  };
-
-  const editClip = async () => {
-    if (!clip) return navigate({ to: "/editor" });
-    if (!user) return navigate({ to: "/auth" });
+  const [saving, setSaving] = useState(false);
+  const lock = useRef(false);
+  const savedAsset = useRef<Asset | null>(null);
+  const inserted = useRef(false);
+  const recording = camera.state === "RECORDING";
+  const ready = camera.state === "READY";
+  const blocked = recording || camera.countdown > 0 || saving || ["REQUESTING_PERMISSION", "STOPPING", "PROCESSING"].includes(camera.state);
+  const reset = () => { savedAsset.current = null; inserted.current = false; setUpload({ status: "IDLE" }); };
+  const useVideo = async () => {
+    if (!camera.clip || lock.current) return;
+    if (!user) { camera.setError("Sign in to save this recording. Download it before leaving this page; unsaved recordings do not survive refresh."); return; }
+    lock.current = true; setSaving(true);
     try {
-      const ext = clip.blob.type.includes("mp4") ? "mp4" : "webm";
-      const project = await ensureActiveProject(user.id);
-      await uploadAsset({ userId: user.id, projectId: project.id, file: clip.blob, filename: `recording-${Date.now()}.${ext}`, onState: setUpload });
-      navigate({ to: "/editor" });
-    } catch {
-      /* upload state shows the error */
-    }
+      const id = await ensureProject();
+      let asset = savedAsset.current;
+      if (!asset) {
+        asset = await uploadAsset({ userId: user.id, projectId: id, file: camera.clip.file, onState: setUpload });
+        savedAsset.current = asset;
+      }
+      if (!inserted.current) {
+        await appendAssets(user.id, id, [{ assetId: asset.id, track: "MAIN", duration: assetDuration(asset.type, asset.duration), label: asset.name }]);
+        inserted.current = true;
+      }
+      await refreshProject();
+      await navigate({ to: "/editor" });
+    } catch (e) { camera.setError(e instanceof Error ? e.message : "Could not save the recording. Please retry."); }
+    finally { lock.current = false; setSaving(false); }
   };
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-black">
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        className={cn(
-          "absolute inset-0 size-full object-cover transition-all duration-500",
-          !flipped && "scale-x-[-1]",
-          active["COLOR"] && "saturate-150 contrast-110",
-          active["SKIN"] && "brightness-105",
-          camState !== "live" && "opacity-0",
-        )}
-        style={{ transform: `${!flipped ? "scaleX(-1) " : ""}scale(${zoom})` }}
-      />
-      {camState !== "live" ? (
-        <div className="absolute inset-x-6 top-1/3 z-20 rounded-2xl border border-border bg-background/80 p-4 text-center backdrop-blur-xl" role="status">
-          <p className="text-[12px] font-bold uppercase tracking-[0.16em]">
-            {camState === "requesting" ? "Requesting camera access…" : "Camera unavailable"}
-          </p>
-          {camError ? <p className="mt-1.5 text-[11.5px] text-muted-foreground">{camError}</p> : null}
-        </div>
-      ) : null}
-      <img
-        src={cameraPreview}
-        alt=""
-        aria-hidden="true"
-        width={720}
-        height={1280}
-        className={cn(camState === "live" && "hidden", "opacity-30",
-          "absolute inset-0 size-full object-cover transition-all duration-500",
-          flipped && "scale-x-[-1]",
-          active["COLOR"] && "saturate-150 contrast-110",
-          active["SKIN"] && "brightness-105",
-        )}
-        style={{ transform: `${flipped ? "scaleX(-1) " : ""}scale(${zoom})` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/85 via-background/10 to-background/90" />
-
-      {/* Top bar */}
-      <div className="relative z-10 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+14px)]">
-        <Link
-          to="/home"
-          aria-label="Back to home"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-background/60 backdrop-blur-md active:scale-95"
-        >
-          <ChevronLeft className="size-5 text-foreground" strokeWidth={1.7} />
-        </Link>
-        <p className="flex-1 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
-          AI Camera
-        </p>
-        <span className="flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-2.5 py-1 text-[10px] font-bold tabular-nums tracking-widest text-foreground backdrop-blur-md">
-          {recording ? <span className="size-1.5 animate-pulse rounded-full bg-destructive" /> : null}
-          {timecode}
+    <div className="relative min-h-[100dvh] overflow-hidden bg-background" data-camera-state={camera.state}>
+      <video ref={camera.videoRef} autoPlay muted playsInline className={cn("absolute inset-0 size-full object-cover", camera.facing === "user" && "-scale-x-100", !ready && !recording && "invisible")} />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/85 via-background/10 to-background/90" />
+      <header className="relative z-10 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+14px)]">
+        <Button asChild variant="outline" size="icon" className="shrink-0 rounded-full bg-background/60"><Link to="/home" aria-label="Back to home"><ChevronLeft /></Link></Button>
+        <p className="flex-1 text-center text-[11px] font-bold uppercase tracking-[0.22em]">AI Camera</p>
+        <span className="flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-2.5 py-1 text-[10px] font-bold tabular-nums">
+          {recording && <span className="size-1.5 animate-pulse rounded-full bg-destructive" />}{formatDuration(camera.elapsed) === "--:--" ? "00:00" : formatDuration(camera.elapsed)}
         </span>
-      </div>
-
-      {/* AI toolbar */}
+      </header>
       <div className="no-scrollbar relative z-10 mt-4 flex gap-2 overflow-x-auto px-4">
-        {AI_TOOLS.map((t) => {
-          const on = active[t];
-          return (
-            <button
-              key={t}
-              onClick={() => toggle(t)}
-              className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] backdrop-blur-md transition-all active:scale-95",
-                on
-                  ? "border-transparent bg-gradient-brand text-primary-foreground shadow-glow-sm"
-                  : "border-border bg-background/50 text-muted-foreground",
-              )}
-            >
-              {t === "HDR" ? (
-                <>
-                  HDR: {on ? "ON" : "OFF"}
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      on ? "bg-[oklch(0.8_0.2_150)]" : "bg-muted-foreground",
-                    )}
-                  />
-                </>
-              ) : (
-                t
-              )}
-            </button>
-          );
-        })}
+        {["AUTO LIGHT", "SKIN", "HDR", "COLOR", "STABILIZATION"].map((t) => <Button key={t} variant="outline" size="sm" title={`${t} processing is not configured`} onClick={() => camera.setError(`${t} processing is not configured. Your recording remains unmodified.`)} className="shrink-0 rounded-full bg-background/50 text-[10px] text-muted-foreground">{t} · OFF</Button>)}
       </div>
-
-      {/* Left status chips */}
-      <div className="absolute left-4 top-[38%] z-10 flex flex-col gap-2">
-        <StatusChip label="LIGHT" value={active["AUTO LIGHT"] ? "AUTO" : "MANUAL"} />
-        <StatusChip label="SKIN" value={active["SKIN"] ? "SMOOTH" : "NATURAL"} />
-      </div>
-
-      {/* Floating control panel */}
-      <div className="absolute right-4 top-[32%] z-10 flex flex-col gap-1 rounded-2xl border border-border bg-background/45 p-1.5 backdrop-blur-xl">
-        <PanelButton icon={RefreshCw} label="Flip" active={flipped} onClick={() => setFlipped((v) => !v)} />
-        <PanelButton icon={Zap} label="Flash" active={flash} onClick={() => setFlash((v) => !v)} />
-        <PanelButton
-          icon={Timer}
-          label={timer ? `${timer}s` : "Timer"}
-          active={timer > 0}
-          onClick={() => setTimer((t) => (t === 0 ? 3 : t === 3 ? 10 : 0))}
-        />
-        <PanelButton
-          icon={ZoomIn}
-          label={`${zoom}x`}
-          active={zoom > 1}
-          onClick={() => setZoom((z) => (z === 1 ? 1.5 : z === 1.5 ? 2 : 1))}
-        />
-      </div>
-
-      {/* Bottom */}
-      <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-[calc(env(safe-area-inset-bottom)+18px)]">
-        <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border border-border-strong bg-background/60 px-4 py-2 backdrop-blur-xl">
-          <Sparkles className="size-3.5 animate-pulse text-accent" strokeWidth={1.8} />
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-gradient">
-            AI Enhancement Ready
-          </span>
+      {!ready && !recording && !camera.clip && <div className="relative z-10 mx-6 mt-12 border border-border bg-background/80 p-4 text-center" role="status">
+        <p className="text-[12px] font-bold uppercase">{camera.state === "REQUESTING_PERMISSION" ? "Requesting camera access…" : camera.state === "ERROR" ? "Camera unavailable" : "Camera inactive"}</p>
+        <Button disabled={blocked} onClick={() => void camera.activate()} className="mt-3 bg-gradient-brand text-primary-foreground">{camera.state === "ERROR" ? "Retry camera" : "Activate camera"}</Button>
+        <Button variant="outline" onClick={() => setGallery(true)} className="ml-2 mt-3"><Images />Import</Button>
+      </div>}
+      {camera.error && <div className="relative z-20 mx-4 mt-3 border border-destructive bg-background/95 p-3 text-[12px]" role="alert">{camera.error}</div>}
+      {camera.countdown > 0 && <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center text-7xl font-bold" role="status">{camera.countdown}</div>}
+      {!camera.clip && <>
+        <div className="absolute left-4 top-[45%] z-10 flex flex-col gap-2 text-[9px] uppercase"><span className="rounded-lg border border-border bg-background/60 px-2 py-1">LIGHT: DEVICE</span><span className="rounded-lg border border-border bg-background/60 px-2 py-1">SKIN: NATURAL</span></div>
+        <div className="absolute right-4 top-[32%] z-10 flex flex-col gap-1 rounded-2xl border border-border bg-background/60 p-1.5">
+          <Panel icon={RefreshCw} label="Flip" disabled={!ready || blocked || !camera.canFlip} title={camera.canFlip ? "Switch camera" : "Only one camera is available"} onClick={() => void camera.flip()} />
+          <Panel icon={Zap} label="Flash" disabled={!ready || blocked} title={camera.capabilities.torch ? "Camera torch" : "Flash not supported"} active={camera.torch} onClick={() => void camera.apply("torch", !camera.torch)} />
+          <Panel icon={Timer} label={timer ? `${timer}s` : "Timer"} disabled={blocked} active={timer > 0} onClick={() => setTimer((t) => t === 0 ? 3 : t === 3 ? 10 : 0)} />
+          <Panel icon={ZoomIn} label={`${camera.zoom.toFixed(1)}x`} disabled={!ready || blocked} title={camera.capabilities.zoom ? "Camera zoom" : "Zoom not supported"} onClick={() => { const range = camera.capabilities.zoom; void camera.apply("zoom", range ? camera.zoom >= range.max ? range.min : Math.min(range.max, camera.zoom + Math.max(range.step, 0.5)) : 1); }} />
         </div>
-
-        {hasClip ? (
-          <div className="animate-rise mb-5 flex items-center gap-3 rounded-2xl border border-border bg-background/70 p-3 backdrop-blur-xl">
-            {clip ? (
-              <video src={clip.url} muted playsInline className="size-12 rounded-lg object-cover" />
-            ) : null}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold">New recording</p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">
-                {upload.status === "UPLOADING"
-                  ? `Uploading ${upload.progress}%`
-                  : upload.status === "PROCESSING" || upload.status === "SELECTED"
-                    ? "Saving…"
-                    : upload.status === "FAILED"
-                      ? upload.error
-                      : `${timecode} · ${clip ? formatBytes(clip.blob.size) : ""}`}
-              </p>
-            </div>
-            <button
-              disabled={upload.status === "UPLOADING" || upload.status === "PROCESSING"}
-              onClick={() => void editClip()}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-brand px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary-foreground shadow-glow-sm active:scale-95"
-            >
-              <Wand2 className="size-3.5" strokeWidth={2} /> Edit video
-            </button>
-          </div>
-        ) : null}
-
+      </>}
+      {camera.clip && <div className="relative z-10 mx-auto mt-5 max-w-[560px] px-4">
+        <video src={camera.clip.url} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl border border-border bg-surface" aria-label="Recorded video preview" />
+        <p className="mt-2 text-[11px] text-muted-foreground">Temporary recording · {formatDuration(camera.clip.duration)} · {formatBytes(camera.clip.file.size)} · {camera.clip.file.type} · {camera.clip.hasAudio ? "Audio captured" : "No audio"}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">Unsaved recording — lost on refresh.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="outline" disabled={saving} onClick={() => { reset(); camera.discard(); }}>Discard</Button>
+          <Button variant="outline" disabled={saving} onClick={() => { reset(); void camera.retake(); }}><RefreshCw />Retake</Button>
+          <Button asChild variant="outline"><a href={camera.clip.url} download={camera.clip.file.name}><Download />Download</a></Button>
+          <Button disabled={saving} onClick={() => void useVideo()} className="bg-gradient-brand text-primary-foreground"><Wand2 />{saving ? "Saving…" : "Use video"}</Button>
+        </div>
+        {!user && <Button asChild variant="link"><Link to="/auth">Sign in to save</Link></Button>}
+        {upload.status !== "IDLE" && <p className="mt-2 text-[12px]" role="status">{upload.status === "UPLOADING" ? `Uploading ${upload.progress}%` : upload.status === "FAILED" ? upload.error : upload.status === "READY" ? "File uploaded — preparing project" : "Preparing media…"}</p>}
+      </div>}
+      {!camera.clip && <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-[calc(env(safe-area-inset-bottom)+18px)]">
+        <p className="mx-auto mb-5 w-fit rounded-full border border-border bg-background/60 px-4 py-2 text-[10px] font-bold uppercase text-muted-foreground">Original capture · AI processing unavailable</p>
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => setGalleryOpen(true)}
-            aria-label="Gallery"
-            className="size-12 overflow-hidden rounded-xl border border-border-strong active:scale-95"
-          >
-            <img
-              src={galleryThumb}
-              alt="Recent media"
-              loading="lazy"
-              width={512}
-              height={768}
-              className="size-full object-cover"
-            />
-          </button>
-
-          <button
-            onClick={onRec}
-            aria-label={recording ? "Stop recording" : "Start recording"}
-            className="relative flex size-[78px] items-center justify-center rounded-full border-[3px] border-foreground/90 transition-transform active:scale-95"
-          >
-            {recording ? (
-              <span className="absolute inset-0 animate-ping rounded-full border-2 border-destructive/60" />
-            ) : null}
-            <span
-              className={cn(
-                "bg-destructive transition-all duration-300",
-                recording ? "size-7 rounded-md" : "size-[60px] rounded-full",
-              )}
-            />
-          </button>
-
-          <button
-            onClick={() => setPresetsOpen((v) => !v)}
-            aria-label="Presets"
-            className="flex size-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/50 backdrop-blur-md active:scale-95"
-          >
-            <Sliders className="size-5 text-foreground" strokeWidth={1.6} />
-            <span className="text-[8px] uppercase tracking-widest text-muted-foreground">
-              {preset === "Standard" ? "Set" : preset.slice(0, 3)}
-            </span>
-          </button>
+          <Button variant="outline" size="icon" disabled={blocked} aria-label="Gallery" onClick={() => setGallery(true)} className="size-12 rounded-xl bg-background/60"><Images /></Button>
+          <Button variant="ghost" disabled={(!ready && !recording) || camera.countdown > 0 || saving} onClick={() => recording ? camera.stop() : void camera.start(timer, audio)} aria-label={recording ? "Stop recording" : "Start recording"} className="relative size-[78px] rounded-full border-[3px] border-foreground/90 p-0">
+            <span className={cn("bg-destructive", recording ? "size-7 rounded-md" : "size-[60px] rounded-full")} />
+          </Button>
+          <Button variant="outline" size="icon" disabled={blocked} aria-label="Recording settings" onClick={() => setSettings((v) => !v)} className="size-12 rounded-xl bg-background/60"><Sliders /></Button>
         </div>
-
-        {presetsOpen ? (
-          <div className="animate-rise mt-3 rounded-2xl border border-border-strong bg-background/80 p-2 backdrop-blur-xl">
-            <p className="px-1.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-              Camera presets
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.name}
-                  onClick={() => applyPreset(p.name, p.tools)}
-                  className={cn(
-                    "rounded-xl border px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] active:scale-95",
-                    preset === p.name
-                      ? "border-transparent bg-gradient-brand text-primary-foreground shadow-glow-sm"
-                      : "border-border bg-background/50 text-muted-foreground",
-                  )}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {galleryOpen ? (
-          <div className="animate-rise mt-3 rounded-2xl border border-border-strong bg-background/80 p-3 backdrop-blur-xl">
-            <div className="flex items-center justify-between">
-              <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                Recent media
-              </p>
-              <button
-                onClick={() => setGalleryOpen(false)}
-                className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-accent active:scale-95"
-              >
-                Close
-              </button>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {[galleryThumb, cameraPreview, galleryThumb].map((src, i) => (
-                <button
-                  key={i}
-                  onClick={() => navigate({ to: "/editor" })}
-                  className="overflow-hidden rounded-lg border border-border active:scale-95"
-                >
-                  <img src={src} alt="Recent media" loading="lazy" className="aspect-[9/13] w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-3 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          <Images className="size-3.5" strokeWidth={1.6} />
-          {recording ? "Recording" : hasClip ? "Clip ready" : "Tap to record"}
-        </div>
-      </div>
+        {settings && <div className="mt-3 rounded-xl border border-border bg-background/90 p-3"><Button variant="outline" aria-pressed={audio} onClick={() => setAudio((a) => !a)}><Mic />Audio {audio ? "ON" : "OFF"}</Button></div>}
+        <p className="mt-3 text-center text-[10px] uppercase text-muted-foreground">{camera.state.replaceAll("_", " ")}</p>
+      </div>}
+      <AddToProjectSheet open={gallery} onClose={() => setGallery(false)} />
     </div>
   );
 }
-
-function StatusChip({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="rounded-lg border border-border bg-background/45 px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground backdrop-blur-md">
-      {label}: <span className="text-foreground">{value}</span>
-    </span>
-  );
-}
-
-function PanelButton({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: typeof Zap;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex w-14 flex-col items-center gap-0.5 rounded-xl px-1 py-2 transition-all active:scale-95",
-        active ? "bg-gradient-brand text-primary-foreground shadow-glow-sm" : "text-muted-foreground",
-      )}
-    >
-      <Icon className="size-[18px]" strokeWidth={1.6} />
-      <span className="text-[9px] font-semibold uppercase tracking-[0.1em]">{label}</span>
-    </button>
-  );
+function Panel({ icon: Icon, label, active, disabled, title, onClick }: { icon: typeof Zap; label: string; active?: boolean; disabled?: boolean; title?: string; onClick: () => void }) {
+  return <Button variant="ghost" disabled={disabled} title={title} aria-label={label} onClick={onClick} className={cn("h-auto w-14 flex-col gap-0.5 rounded-xl px-1 py-2 text-[9px]", active ? "bg-gradient-brand text-primary-foreground" : "text-muted-foreground")}><Icon />{label}</Button>;
 }

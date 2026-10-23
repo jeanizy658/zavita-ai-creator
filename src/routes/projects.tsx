@@ -8,6 +8,7 @@ import { AppShell } from "@/components/zavita/AppShell";
 import { Header } from "@/components/zavita/Header";
 import { ProjectCard } from "@/components/zavita/ProjectCard";
 import { SectionHeader } from "@/components/zavita/SectionHeader";
+import { useStudio } from "@/lib/studio-store";
 import { cn } from "@/lib/utils";
 import businessThumb from "@/assets/proj-business.jpg";
 import travelThumb from "@/assets/proj-travel.jpg";
@@ -23,12 +24,15 @@ export const Route = createFileRoute("/projects")({
       { name: "description", content: "All your ZAVITA AI video and photo projects in one place." },
       { property: "og:title", content: "Projects — ZAVITA" },
       { property: "og:description", content: "All your ZAVITA AI projects in one place." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ProjectsScreen,
 });
 
 type Project = {
+  id?: string;
   title: string;
   duration: string;
   date: string;
@@ -49,6 +53,7 @@ const FILTERS = ["All", "Draft", "Scheduled", "Published"] as const;
 
 function ProjectsScreen() {
   const navigate = useNavigate();
+  const { openProject } = useStudio();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
   const [query, setQuery] = useState("");
   const { user } = useAuth();
@@ -62,6 +67,7 @@ function ProjectsScreen() {
         setReal(
           await Promise.all(
             rows.map(async (r) => ({
+              id: r.id,
               title: r.title,
               duration: `${String(Math.floor(Number(r.duration) / 60)).padStart(2, "0")}:${String(Math.round(Number(r.duration)) % 60).padStart(2, "0")}`,
               date: new Date(r.updated_at).toLocaleDateString(),
@@ -77,14 +83,15 @@ function ProjectsScreen() {
   const newProject = async () => {
     if (!user) return navigate({ to: "/auth" });
     try {
-      await createProject(user.id, `Project ${new Date().toLocaleDateString()}`);
+      const project = await createProject(user.id, `Project ${new Date().toLocaleDateString()}`);
+      await openProject(project.id);
     } catch (e) {
       return setError(e instanceof Error ? e.message : "Could not create project.");
     }
     navigate({ to: "/camera" });
   };
 
-  const PROJECTS = real ?? SAMPLE_PROJECTS;
+  const PROJECTS = user ? real ?? [] : SAMPLE_PROJECTS;
   const list = PROJECTS.filter(
     (p) =>
       (filter === "All" || p.status === filter) &&
@@ -99,7 +106,7 @@ function ProjectsScreen() {
         <SectionHeader
           title="My Projects"
           actionLabel="New"
-          onAction={() => navigate({ to: "/camera" })}
+          onAction={() => void newProject()}
         />
 
         <label className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5">
@@ -158,7 +165,7 @@ function ProjectsScreen() {
                   duration={p.duration}
                   date={p.date}
                   className="group w-full text-left transition-transform duration-200 active:scale-[0.97]"
-                  onClick={() => navigate({ to: "/editor" })}
+                  onClick={() => { if (!p.id) { navigate({ to: "/editor" }); return; } void openProject(p.id).then(() => navigate({ to: "/editor" })).catch((e) => setError(e.message)); }}
                 />
                 <span
                   className={cn(

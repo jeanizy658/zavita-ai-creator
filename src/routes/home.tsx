@@ -38,6 +38,8 @@ export const Route = createFileRoute("/home")({
         property: "og:description",
         content: "The premium mobile AI content creation studio for creators.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: HomeScreen,

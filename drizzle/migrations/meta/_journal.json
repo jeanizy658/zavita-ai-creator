@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792731833766,
+      "tag": "0000_enforce_media_project_ownership",
+      "breakpoints": true
+    }
+  ]
+}
