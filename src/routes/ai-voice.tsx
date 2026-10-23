@@ -17,6 +17,8 @@ export const Route = createFileRoute("/ai-voice")({
       },
       { property: "og:title", content: "AI Voice — ZAVITA" },
       { property: "og:description", content: "Studio-grade AI voice for your videos." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AiVoiceScreen,

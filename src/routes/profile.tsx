@@ -29,6 +29,8 @@ export const Route = createFileRoute("/profile")({
       { name: "description", content: "Manage your ZAVITA account, PRO plan and creator preferences." },
       { property: "og:title", content: "Profile — ZAVITA" },
       { property: "og:description", content: "Manage your ZAVITA account and PRO plan." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ProfileScreen,

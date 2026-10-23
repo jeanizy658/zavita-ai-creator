@@ -18,6 +18,8 @@ export const Route = createFileRoute("/avatar")({
       },
       { property: "og:title", content: "AI Avatar Studio — ZAVITA" },
       { property: "og:description", content: "Create a talking AI avatar with ZAVITA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AvatarStudio,

@@ -45,10 +45,12 @@ export const Route = createFileRoute("/editor")({
       {
         name: "description",
         content:
-          "Multi-track mobile video editor with AI suggestions, B-roll, subtitles and a professional timeline.",
+          "Preview stored media and arrange your ZAVITA project clips on six tracks.",
       },
       { property: "og:title", content: "Video Editor — ZAVITA" },
-      { property: "og:description", content: "Professional multi-track mobile editing with AI." },
+      { property: "og:description", content: "Preview stored media and arrange real project clips on six tracks." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: EditorScreen,
@@ -245,7 +247,7 @@ function EditorScreen() {
                 key={t.id}
                 onClick={() => onTool(t.id)}
                 className={cn(
-                  "flex w-[68px] shrink-0 flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 transition-all active:scale-95",
+                  "flex h-auto w-[68px] shrink-0 flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 transition-all active:scale-95",
                   tool === t.id
                     ? "border-transparent bg-gradient-brand text-primary-foreground shadow-glow-sm"
                     : "border-border bg-surface text-muted-foreground",

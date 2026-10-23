@@ -17,6 +17,8 @@ export const Route = createFileRoute("/ai-enhance")({
       },
       { property: "og:title", content: "AI Enhance — ZAVITA" },
       { property: "og:description", content: "Cinematic AI enhancement for your footage." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AiEnhanceScreen,

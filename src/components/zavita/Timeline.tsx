@@ -70,7 +70,7 @@ export function Timeline({
     <div className="rounded-2xl border border-border bg-surface/60">
       <div className="flex">
         {/* Track heads */}
-        <div className="w-[84px] shrink-0 border-r border-border">
+        <div className="w-[104px] shrink-0 border-r border-border">
           <div className="h-7 border-b border-border" />
           {tracks.map((t) => (
             <div
@@ -87,7 +87,7 @@ export function Timeline({
                   e.stopPropagation();
                   setHidden((h) => ({ ...h, [t.id]: !h[t.id] }));
                 }}
-                className="shrink-0 text-muted-foreground transition-colors hover:text-foreground active:scale-90"
+                className="h-auto shrink-0 p-0 text-muted-foreground transition-colors hover:text-foreground active:scale-90"
               >
                 {hidden[t.id] ? (
                   <EyeOff className="size-3.5" strokeWidth={1.7} />
@@ -148,7 +148,7 @@ export function Timeline({
                       onPlayheadChange(c.start);
                     }}
                     className={cn(
-                      "absolute top-1.5 h-[40px] overflow-hidden rounded-md border text-left transition-shadow",
+                      "absolute top-1.5 h-[40px] p-0 overflow-hidden rounded-md border text-left transition-shadow",
                       selectedClip === c.id
                         ? "border-accent shadow-glow-sm"
                         : "border-border-strong",

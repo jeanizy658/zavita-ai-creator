@@ -24,6 +24,8 @@ export const Route = createFileRoute("/projects")({
       { name: "description", content: "All your ZAVITA AI video and photo projects in one place." },
       { property: "og:title", content: "Projects — ZAVITA" },
       { property: "og:description", content: "All your ZAVITA AI projects in one place." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ProjectsScreen,
