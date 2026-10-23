@@ -125,7 +125,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const openProject = useCallback(async (id: string) => {
     if (!user) throw new Error("Sign in to open a saved project.");
     const ticket = ++request.current;
-    setProjectLoading(true); setProjectError(null); setTimelineMedia([]);
+    setProjectLoading(true); setProjectError(null);
     try {
       const project = await getProject(id);
       if (!project || project.user_id !== user.id) throw new Error("This project is not available to your account.");
@@ -166,7 +166,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     ensurePending.current = pending;
     try { return await pending; } finally { ensurePending.current = null; }
   }, [user?.id, projectId, openProject]);
-  const refreshProject = useCallback(async () => { if (projectId) await openProject(projectId); }, [projectId, openProject]);
+  const refreshProject = useCallback(async () => {
+    const id = projectId ?? (user ? localStorage.getItem(`zavita-project-${user.id}`) : null);
+    if (id) await openProject(id);
+  }, [user?.id, projectId, openProject]);
   useEffect(() => {
     request.current++; ensurePending.current = null;
     setProjectId(null); setProjectName("New project"); setTimelineMedia([]); setSelectedMedia([]); setProjectError(null); setProjectLoading(false);

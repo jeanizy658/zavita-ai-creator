@@ -90,7 +90,7 @@ const BROLL = [
 ];
 
 function tc(seconds: number) {
-  const s = Math.max(0, Math.min(TIMELINE_DURATION, seconds));
+  const s = Math.max(0, seconds);
   const frames = Math.floor((s % 1) * 25);
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")} ${String(frames).padStart(2, "0")}`;
 }
@@ -111,8 +111,8 @@ function EditorScreen() {
   const audioPlayer = useRef<HTMLAudioElement>(null);
   const [playError, setPlayError] = useState<string | null>(null);
   const current = timelineMedia.find((m) => m.trackId === "main" && playhead >= (m.start ?? 0) && playhead < (m.start ?? 0) + m.duration) ?? timelineMedia.find((m) => m.trackId === "main");
-  const currentAudio = timelineMedia.find((m) => m.trackId === "audio");
-  const imageMedia = timelineMedia.find((m) => ["photo", "overlay", "ai"].includes(m.trackId));
+  const currentAudio = timelineMedia.find((m) => m.trackId === "audio" && playhead >= (m.start ?? 0) && playhead < (m.start ?? 0) + m.duration) ?? timelineMedia.find((m) => m.trackId === "audio");
+  const imageMedia = timelineMedia.find((m) => ["photo", "overlay", "ai"].includes(m.trackId) && playhead >= (m.start ?? 0) && playhead < (m.start ?? 0) + m.duration) ?? timelineMedia.find((m) => ["photo", "overlay", "ai"].includes(m.trackId));
   const totalDuration = Math.max(0, ...timelineMedia.map((m) => (m.start ?? 0) + m.duration));
   const seek = (seconds: number) => {
     setPlayhead(seconds);
@@ -130,7 +130,7 @@ function EditorScreen() {
   useEffect(() => {
     if (timelineMedia.length > mediaCount.current) {
       const added = timelineMedia.length - mediaCount.current;
-      setToast(`${added} media added to your project`);
+      setToast(`${added} saved media available`);
       const t = setTimeout(() => setToast(null), 2200);
       mediaCount.current = timelineMedia.length;
       return () => clearTimeout(t);

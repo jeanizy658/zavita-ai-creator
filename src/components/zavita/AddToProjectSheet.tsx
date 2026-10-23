@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Check, Film, Image as ImageIcon, Music2, Mic, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,8 @@ export function AddToProjectSheet({ open, onClose }: { open: boolean; onClose: (
   const [category, setCategory] = useState<string>("VIDEO");
   const [selected, setSelected] = useState<Asset[]>([]);
 
+
+  useEffect(() => { setSelected([]); setSaveError(null); }, [user?.id]);
 
   const targetTracks = useMemo(() => new Set(selected.map((s) => s.track)), [selected]);
 
