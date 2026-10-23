@@ -14,9 +14,9 @@ export type TimelineMedia = {
   image?: string | undefined;
   duration: number;
   start?: number;
-  assetId?: string;
-  source?: string;
-  assetType?: string;
+  assetId?: string | undefined;
+  source?: string | undefined;
+  assetType?: string | undefined;
   visible?: boolean;
 };
 
