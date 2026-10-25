@@ -5,7 +5,11 @@ export type ImageConfig = {
   format: "openai" | "gemini-chat" | "generate-content" | "cloudflare-input";
 };
 
-export function generateImage(config: ImageConfig, prompt: string, stream = true, signal?: AbortSignal) {
+export const imageSettings: Omit<ImageConfig, "apiKey"> = {
+  baseURL: "https://ai.gateway.lovable.dev", model: "google/gemini-3.1-flash-image", format: "gemini-chat",
+};
+
+export function generateImage(config: ImageConfig, prompt: string, stream = true, signal?: AbortSignal, ratio = "1:1") {
   let input: Record<string, unknown>;
   switch (config.format) {
     case "openai":
@@ -24,6 +28,7 @@ export function generateImage(config: ImageConfig, prompt: string, stream = true
       input = {
         messages: [{ role: "user", content: prompt }],
         modalities: ["image", "text"],
+        image_config: { aspect_ratio: ratio },
       };
   }
   return fetch(`${config.baseURL}/v1/images/generations`, {
@@ -31,6 +36,7 @@ export function generateImage(config: ImageConfig, prompt: string, stream = true
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
+      "X-Lovable-AIG-SDK": "fetch",
     },
     body: JSON.stringify({ model: config.model, ...input, ...(stream ? { stream: true } : {}) }),
     signal: signal ?? null,
