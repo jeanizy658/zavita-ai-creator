@@ -65,8 +65,8 @@ export default function HomeScreen() {
     {
       icon: ImageIcon,
       title: "AI Photo",
-      description: "Enhance photos",
-      onClick: () => navigate({ to: "/ai-enhance" }),
+      description: "Generate images",
+      onClick: () => navigate({ to: "/ai-image" }),
     },
     {
       icon: Mic,
