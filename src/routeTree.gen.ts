@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiBackgroundRouteImport } from './routes/ai-background'
 import { Route as AiEnhanceRouteImport } from './routes/ai-enhance'
+import { Route as AiImageRouteImport } from './routes/ai-image'
 import { Route as AiVoiceRouteImport } from './routes/ai-voice'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AvatarRouteImport } from './routes/avatar'
@@ -23,6 +24,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PublishRouteImport } from './routes/publish'
 import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -37,6 +39,11 @@ const AiBackgroundRoute = AiBackgroundRouteImport.update({
 const AiEnhanceRoute = AiEnhanceRouteImport.update({
   id: '/ai-enhance',
   path: '/ai-enhance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiImageRoute = AiImageRouteImport.update({
+  id: '/ai-image',
+  path: '/ai-image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiVoiceRoute = AiVoiceRouteImport.update({
@@ -94,11 +101,17 @@ const ScheduleRoute = ScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
+  id: '/api/generate-image',
+  path: '/api/generate-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
+  '/ai-image': typeof AiImageRoute
   '/ai-voice': typeof AiVoiceRoute
   '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
@@ -110,11 +123,13 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/publish': typeof PublishRoute
   '/schedule': typeof ScheduleRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
+  '/ai-image': typeof AiImageRoute
   '/ai-voice': typeof AiVoiceRoute
   '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
@@ -126,12 +141,14 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/publish': typeof PublishRoute
   '/schedule': typeof ScheduleRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
+  '/ai-image': typeof AiImageRoute
   '/ai-voice': typeof AiVoiceRoute
   '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
@@ -143,6 +160,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/publish': typeof PublishRoute
   '/schedule': typeof ScheduleRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-background'
     | '/ai-enhance'
+    | '/ai-image'
     | '/ai-voice'
     | '/auth'
     | '/avatar'
@@ -161,11 +180,13 @@ export interface FileRouteTypes {
     | '/projects'
     | '/publish'
     | '/schedule'
+    | '/api/generate-image'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/ai-background'
     | '/ai-enhance'
+    | '/ai-image'
     | '/ai-voice'
     | '/auth'
     | '/avatar'
@@ -177,11 +198,13 @@ export interface FileRouteTypes {
     | '/projects'
     | '/publish'
     | '/schedule'
+    | '/api/generate-image'
   id:
     | '__root__'
     | '/'
     | '/ai-background'
     | '/ai-enhance'
+    | '/ai-image'
     | '/ai-voice'
     | '/auth'
     | '/avatar'
@@ -193,12 +216,14 @@ export interface FileRouteTypes {
     | '/projects'
     | '/publish'
     | '/schedule'
+    | '/api/generate-image'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiBackgroundRoute: typeof AiBackgroundRoute
   AiEnhanceRoute: typeof AiEnhanceRoute
+  AiImageRoute: typeof AiImageRoute
   AiVoiceRoute: typeof AiVoiceRoute
   AuthRoute: typeof AuthRoute
   AvatarRoute: typeof AvatarRoute
@@ -210,6 +235,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   PublishRoute: typeof PublishRoute
   ScheduleRoute: typeof ScheduleRoute
+  ApiGenerateImageRoute: typeof ApiGenerateImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -233,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/ai-enhance'
       fullPath: '/ai-enhance'
       preLoaderRoute: typeof AiEnhanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-image': {
+      id: '/ai-image'
+      path: '/ai-image'
+      fullPath: '/ai-image'
+      preLoaderRoute: typeof AiImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai-voice': {
@@ -312,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/generate-image': {
+      id: '/api/generate-image'
+      path: '/api/generate-image'
+      fullPath: '/api/generate-image'
+      preLoaderRoute: typeof ApiGenerateImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -319,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiBackgroundRoute: AiBackgroundRoute,
   AiEnhanceRoute: AiEnhanceRoute,
+  AiImageRoute: AiImageRoute,
   AiVoiceRoute: AiVoiceRoute,
   AuthRoute: AuthRoute,
   AvatarRoute: AvatarRoute,
@@ -330,6 +371,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   PublishRoute: PublishRoute,
   ScheduleRoute: ScheduleRoute,
+  ApiGenerateImageRoute: ApiGenerateImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,4 +1,10 @@
 # Phase 10
+# Phase 11
+- [ ] Audit and preserve the configured image provider and existing media architecture.
+- [ ] Add real prompt/styles/ratios, streaming previews and persisted generation jobs.
+- [ ] Save real images privately; connect history, downloads, deletion and project/timeline insertion.
+- [ ] Test the configured provider and authenticated flow where available; report exact limitations.
+
 - [x] Audit existing camera, imports, storage and project ownership.
 - [x] Implement camera permissions, capture, controls, preview and recovery; verify browser test-device recording.
 - [x] Connect device imports, playback and Recents to stored assets.

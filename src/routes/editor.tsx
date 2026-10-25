@@ -283,6 +283,7 @@ function EditorScreen() {
             </p>
             {tab === "ai" ? (
               <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => navigate({ to: "/ai-image" })}><ImagePlus />AI Image</Button>
                 <Button variant="ghost"
                   onClick={() => navigate({ to: "/ai-enhance" })}
                   className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-[11px] font-semibold active:scale-95"
