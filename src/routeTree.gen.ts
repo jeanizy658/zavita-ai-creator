@@ -24,6 +24,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PublishRouteImport } from './routes/publish'
 import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as ApiEditImageRouteImport } from './routes/api/edit-image'
 import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +102,11 @@ const ScheduleRoute = ScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEditImageRoute = ApiEditImageRouteImport.update({
+  id: '/api/edit-image',
+  path: '/api/edit-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
   id: '/api/generate-image',
   path: '/api/generate-image',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/publish': typeof PublishRoute
   '/schedule': typeof ScheduleRoute
+  '/api/edit-image': typeof ApiEditImageRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
 }
 export interface FileRoutesByTo {
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/publish': typeof PublishRoute
   '/schedule': typeof ScheduleRoute
+  '/api/edit-image': typeof ApiEditImageRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
 }
 export interface FileRoutesById {
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/publish': typeof PublishRoute
   '/schedule': typeof ScheduleRoute
+  '/api/edit-image': typeof ApiEditImageRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
 }
 export interface FileRouteTypes {
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/publish'
     | '/schedule'
+    | '/api/edit-image'
     | '/api/generate-image'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/publish'
     | '/schedule'
+    | '/api/edit-image'
     | '/api/generate-image'
   id:
     | '__root__'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/publish'
     | '/schedule'
+    | '/api/edit-image'
     | '/api/generate-image'
   fileRoutesById: FileRoutesById
 }
@@ -235,6 +247,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   PublishRoute: typeof PublishRoute
   ScheduleRoute: typeof ScheduleRoute
+  ApiEditImageRoute: typeof ApiEditImageRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
 }
 
@@ -345,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/edit-image': {
+      id: '/api/edit-image'
+      path: '/api/edit-image'
+      fullPath: '/api/edit-image'
+      preLoaderRoute: typeof ApiEditImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/generate-image': {
       id: '/api/generate-image'
       path: '/api/generate-image'
@@ -371,6 +391,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   PublishRoute: PublishRoute,
   ScheduleRoute: ScheduleRoute,
+  ApiEditImageRoute: ApiEditImageRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
 }
 export const routeTree = rootRouteImport
