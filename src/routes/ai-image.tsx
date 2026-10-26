@@ -84,9 +84,10 @@ function ImageStudio() {
       await saveGenerated(generated, generation);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Image generation failed.";
+      const storedAsset = saved.current as Asset | null;
       setError(generated ? `Generation succeeded, but saving failed: ${message}` : message); setStatus("error");
       if (generation) {
-        try { await updateJob(generation.id, { status: "FAILED", error: message, ...(generated ? { output: { generated: true, saved: Boolean(saved.current), ...(saved.current ? { assetId: saved.current.id, storagePath: saved.current.storage_path } : {}) } } : {}) }); } catch { /* original error remains visible */ }
+        try { await updateJob(generation.id, { status: "FAILED", error: message, ...(generated ? { output: { generated: true, saved: Boolean(storedAsset), ...(storedAsset ? { assetId: storedAsset.id, storagePath: storedAsset.storage_path } : {}) } } : {}) }); } catch { /* original error remains visible */ }
       }
       if (!generated) { setImage(null); setFinal(false); }
       void refresh().catch(() => {});
