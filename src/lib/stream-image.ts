@@ -31,7 +31,10 @@ export async function streamImage(
   };
   const res = await send(true);
   if (!res.ok || !res.body) {
-    throw new Error(`Image generation failed: ${res.status} ${await res.text().catch(() => "")}`);
+    const text = await res.text().catch(() => "");
+    let message = `Image generation failed (${res.status}).`;
+    try { const parsed = JSON.parse(text); message = parsed.error?.message ?? parsed.message ?? message; } catch { /* no raw provider response */ }
+    throw new Error(message);
   }
 
   let sawCompleted = false;
@@ -45,6 +48,7 @@ export async function streamImage(
       } catch {
         payload = undefined;
       }
+      if (streamError) return;
       if (event.event === "error" || payload?.type === "error") {
         sawAnyEvent = true;
         streamError = payload?.error?.message ?? "Image generation failed";
