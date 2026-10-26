@@ -1,3 +1,5 @@
+import { useServerFn } from "@tanstack/react-start";
+import { saveGeneratedImage } from "@/lib/image-save.functions";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Download, Expand, ImagePlus, Loader2, RefreshCw, Sparkles, Trash2, X, Check } from "lucide-react";
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/ai-image")({ head: () => ({ meta: [
 
 function ImageStudio() {
   const { user, loading } = useAuth();
+  const saveImage = useServerFn(saveGeneratedImage);
   const studio = useStudio();
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
@@ -56,18 +59,13 @@ function ImageStudio() {
   const saveGenerated = async (dataUrl: string, generation: AiJob) => {
     if (!user) throw new Error("Sign in to save this image.");
     setStatus("saving");
-    let realAsset = saved.current;
-    if (!realAsset) {
-      const blob = await (await fetch(dataUrl)).blob();
-      if (!blob.type.startsWith("image/") || blob.size === 0) throw new Error("The provider returned an invalid image.");
-      realAsset = await uploadAsset({ userId: user.id, projectId: generation.project_id, file: new File([blob], `AI-${generation.id}.png`, { type: blob.type }), assetType: "AI_VISUAL", onState: () => {} });
-      saved.current = realAsset;
-    }
-    const completed = await updateJob(generation.id, { status: "COMPLETED", progress: 100, error: null, output: { assetId: realAsset.id, storagePath: realAsset.storage_path } });
+    const realAsset = await saveImage({ data: { jobId: generation.id, dataUrl } });
+    saved.current = realAsset;
+    const completed = { ...generation, status: "COMPLETED" as const, output: { assetId: realAsset.id, storagePath: realAsset.storage_path } };
     const url = await signedUrl(realAsset.storage_path);
     if (!url) throw new Error("Image generated and saved, but preview is unavailable. Reopen it from history.");
     setAsset(realAsset); setJob(completed); setImage(url); setFinal(true); setStatus("ready");
-    await refresh();
+    await refresh().catch((e) => setError("Image saved, but history could not refresh: " + e.message));
   };
   const generate = async () => {
     if (lock.current || !user) return;
@@ -88,14 +86,15 @@ function ImageStudio() {
       const message = e instanceof Error ? e.message : "Image generation failed.";
       setError(generated ? `Generation succeeded, but saving failed: ${message}` : message); setStatus("error");
       if (generation) {
-        try { await updateJob(generation.id, { status: "FAILED", error: message, ...(generated ? { output: { generated: true, saved: Boolean(saved.current) } } : {}) }); } catch { /* original error remains visible */ }
+        try { await updateJob(generation.id, { status: "FAILED", error: message, ...(generated ? { output: { generated: true, saved: Boolean(saved.current), ...(saved.current ? { assetId: saved.current.id, storagePath: saved.current.storage_path } : {}) } } : {}) }); } catch { /* original error remains visible */ }
       }
       if (!generated) { setImage(null); setFinal(false); }
       void refresh().catch(() => {});
     } finally { lock.current = false; }
   };
   const action = async (kind: "project" | "editor" | "delete" | "download") => {
-    if (!asset || actionBusy || !user) return;
+    if (!asset || actionBusy || lock.current || !user) return;
+    lock.current = true;
     setActionBusy(true); setError(null); setNotice(null);
     try {
       if (kind === "download") {
@@ -119,7 +118,7 @@ function ImageStudio() {
         } else { setNotice("Image saved to project"); await refresh(); }
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Action failed. Retry."); }
-    finally { setActionBusy(false); }
+    finally { lock.current = false; setActionBusy(false); }
   };
   const reopen = async (row: AiJob) => {
     if (busy) return;
@@ -149,7 +148,7 @@ function ImageStudio() {
         <label htmlFor="image-project" className="mt-5 block text-[11px] font-bold uppercase text-muted-foreground">Project</label>
         <select id="image-project" value={project} disabled={busy || actionBusy} onChange={(e) => setProject(e.target.value)} className="mt-2 h-11 w-full rounded-xl border border-border bg-surface px-3 text-[13px]"><option value="">Media library</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}</select>
         {user && <Button variant="link" disabled={busy || actionBusy} onClick={() => { const title = window.prompt("Project name"); if (title?.trim()) void createProject(user.id, title.trim()).then(async (p) => { setProject(p.id); await refresh(); }).catch((e) => setError(e.message)); }}>New project</Button>}
-        {!loading && !user ? <Button asChild className="mt-5 w-full bg-gradient-brand"><Link to="/auth">Sign in to generate</Link></Button> : <Button disabled={busy || loading} onClick={() => void generate()} className="mt-5 h-12 w-full rounded-xl bg-gradient-brand text-primary-foreground">{busy ? <Loader2 className="animate-spin" /> : <Sparkles />}{status === "saving" ? "Saving image…" : status === "generating" ? "Generating…" : "Generate image"}</Button>}
+        {!loading && !user ? <Button asChild className="mt-5 w-full bg-gradient-brand"><Link to="/auth">Sign in to generate</Link></Button> : <Button disabled={busy || actionBusy || loading} onClick={() => void generate()} className="mt-5 h-12 w-full rounded-xl bg-gradient-brand text-primary-foreground">{busy ? <Loader2 className="animate-spin" /> : <Sparkles />}{status === "saving" ? "Saving image…" : status === "generating" ? "Generating…" : "Generate image"}</Button>}
         {error && <p role="alert" className="mt-3 break-words text-[12px] text-destructive">{error}</p>}{notice && <p role="status" className="mt-3 text-[12px] text-accent">{notice}</p>}
         {status === "error" && image?.startsWith("data:") && final && job && <Button variant="outline" className="mt-3" onClick={() => { if (lock.current) return; lock.current = true; void saveGenerated(image, job).catch((e) => { setError(e.message); setStatus("error"); }).finally(() => { lock.current = false; }); }}>Retry saving — no regeneration</Button>}
       </section>
@@ -159,10 +158,10 @@ function ImageStudio() {
           {busy && <span role="status" className="absolute bottom-3 left-3 flex items-center gap-2 rounded-lg bg-background/90 px-3 py-2 text-[11px]"><Loader2 className="size-3 animate-spin" />{status === "saving" ? "Saving real image" : "Generating image"}</span>}
           {image && final && <Button variant="outline" size="icon" aria-label="Expand image" title="Expand image" onClick={() => setExpanded(true)} className="absolute right-3 top-3 bg-background/80"><Expand /></Button>}
         </div>
-        {asset && <><p className="mt-2 flex items-center gap-1 text-[11px] text-accent"><Check className="size-3" />Saved privately</p><div className="mt-3 grid grid-cols-2 gap-2"><Button variant="outline" disabled={actionBusy} onClick={() => void action("download")}><Download />Download</Button><Button variant="outline" disabled={busy} onClick={() => void generate()}><RefreshCw />Regenerate</Button><Button variant="outline" disabled={actionBusy} onClick={() => void action("project")}>Save to project</Button><Button disabled={actionBusy} onClick={() => void action("editor")} className="bg-gradient-brand"><ImagePlus />Add to Editor</Button></div><Button variant="ghost" disabled={actionBusy} onClick={() => void action("delete")} className="mt-2 text-destructive"><Trash2 />Delete image</Button></>}
+        {asset && <><p className="mt-2 flex items-center gap-1 text-[11px] text-accent"><Check className="size-3" />Saved privately</p><div className="mt-3 grid grid-cols-2 gap-2"><Button variant="outline" disabled={actionBusy} onClick={() => void action("download")}><Download />Download</Button><Button variant="outline" disabled={busy || actionBusy} onClick={() => void generate()}><RefreshCw />Regenerate</Button><Button variant="outline" disabled={actionBusy} onClick={() => void action("project")}>Save to project</Button><Button disabled={actionBusy} onClick={() => void action("editor")} className="bg-gradient-brand"><ImagePlus />Add to Editor</Button></div><Button variant="ghost" disabled={actionBusy} onClick={() => void action("delete")} className="mt-2 text-destructive"><Trash2 />Delete image</Button></>}
         <h2 className="mb-3 mt-6 text-[11px] font-bold uppercase text-muted-foreground">Generation history</h2>
         {history.length === 0 && <p className="text-[12px] text-muted-foreground">No generations yet.</p>}
-        <div className="space-y-2">{history.map((row) => { const input = row.input as Record<string, unknown>; const output = row.output as Record<string, unknown> | null; const thumb = thumbnails[String(output?.["assetId"])]; return <Button key={row.id} variant="outline" disabled={busy} onClick={() => void reopen(row).catch((e) => setError(e.message))} className="h-auto w-full justify-start rounded-xl p-2 text-left"><span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">{thumb ? <img src={thumb} alt="" className="size-full object-cover" /> : <ImagePlus />}</span><span className="min-w-0 flex-1"><span className="block truncate text-[12px]">{String(input["prompt"] ?? "Image generation")}</span><span className="block text-[10px] text-muted-foreground">{String(input["style"] ?? "")} · {String(input["ratio"] ?? "")} · {row.status}</span></span></Button>; })}</div>
+        <div className="space-y-2">{history.map((row) => { const input = row.input as Record<string, unknown>; const output = row.output as Record<string, unknown> | null; const thumb = thumbnails[String(output?.["assetId"])]; return <Button key={row.id} variant="outline" disabled={busy} onClick={() => void reopen(row).catch((e) => setError(e.message))} className="h-auto w-full justify-start rounded-xl p-2 text-left"><span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">{thumb ? <img src={thumb} alt="" className="size-full object-cover" /> : <ImagePlus />}</span><span className="min-w-0 flex-1"><span className="block truncate text-[12px]">{String(input["prompt"] ?? "Image generation")}</span><span className="block text-[10px] text-muted-foreground">{String(input["style"] ?? "")} · {String(input["ratio"] ?? "")} · {row.status === "QUEUED" ? "CREATED" : row.status}</span></span></Button>; })}</div>
       </section>
     </main>
     {expanded && image && <div role="dialog" aria-label="Image preview" className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 p-5"><img src={image} alt={prompt || "Generated image"} className="max-h-full max-w-full object-contain" /><Button variant="outline" size="icon" aria-label="Close image preview" onClick={() => setExpanded(false)} className="absolute right-4 top-4"><X /></Button></div>}
