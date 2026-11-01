@@ -8,7 +8,7 @@ export const saveGeneratedImage = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ jobId: z.string().uuid(), dataUrl: z.string().max(36 * 1024 * 1024) }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: job, error: jobError } = await context.supabase.from("ai_jobs").select("*").eq("id", data.jobId).eq("user_id", context.userId).single();
-    if (jobError || !job || job.type !== "generateImage") throw new Error("Generation not found.");
+    if (jobError || !job || (job.type !== "generateImage" && job.type !== "editImage")) throw new Error("Generation not found.");
     const { data: existing } = await context.supabase.from("assets").select("*").eq("id", job.id).maybeSingle();
     let asset = existing;
     if (!asset) {
@@ -20,7 +20,7 @@ export const saveGeneratedImage = createServerFn({ method: "POST" })
       const path = `${context.userId}/generated/${job.id}.png`;
       const { error: storageError } = await context.supabase.storage.from("media").upload(path, bytes, { contentType: "image/png", upsert: true });
       if (storageError) throw new Error("Generation succeeded, but private storage failed: " + storageError.message);
-      const { data: inserted, error: insertError } = await context.supabase.from("assets").upsert({ id: job.id, user_id: context.userId, project_id: job.project_id, type: "AI_VISUAL", name: `AI-${job.id}.png`, storage_path: path, thumbnail_url: path, mime_type: "image/png", size: bytes.length, metadata: { jobId: job.id } }, { onConflict: "id" }).select("*").single();
+      const { data: inserted, error: insertError } = await context.supabase.from("assets").upsert({ id: job.id, user_id: context.userId, project_id: job.project_id, type: "AI_VISUAL", name: `${job.type === "editImage" ? "EDIT" : "AI"}-${job.id}.png`, storage_path: path, thumbnail_url: path, mime_type: "image/png", size: bytes.length, metadata: ({ jobId: job.id, kind: job.type, ...(job.type === "editImage" ? { sourceAssetId: (job.input as Record<string, string>)["sourceAssetId"] ?? null, options: (job.input as Record<string, string>)["options"] ?? [], instructions: (job.input as Record<string, string>)["instructions"] ?? "", model: (job.input as Record<string, string>)["model"] ?? null } : {}) }) as never }, { onConflict: "id" }).select("*").single();
       if (insertError || !inserted) throw new Error("Image uploaded, but its metadata could not be saved. Retry saving.");
       asset = inserted;
     }

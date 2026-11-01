@@ -37,8 +37,7 @@ export const Route = createFileRoute("/api/edit-image")({ server: { handlers: {
       return err("Image source introuvable ou format non pris en charge (JPEG, PNG, WebP).", 400);
     }
     if (body.stream) {
-      const { generateImage: _unused, imageSettings } = await import("@/lib/image-gateway.server");
-      void _unused;
+      const { imageSettings } = await import("@/lib/image-gateway.server");
       const { data: claimed } = await client.from("ai_jobs").update({ status: "PROCESSING", input: { ...body, stream: undefined, provider: "lovable", model: imageSettings.model, sourceAssetId: source.id, sourcePath: source.storage_path } }).eq("id", job.id).eq("status", "QUEUED").select("id").maybeSingle();
       if (!claimed) return err("Cette édition a déjà démarré. Ouvrez-la depuis l'historique.", 409);
     } else if (job.status !== "PROCESSING") return err("Cette édition ne peut pas être relancée.", 409);
