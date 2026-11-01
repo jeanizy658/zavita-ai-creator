@@ -13,6 +13,7 @@ import { signedUrl, removeFromStorage } from "@/lib/storage";
 import { streamImage } from "@/lib/stream-image";
 import { IMAGE_RATIOS, IMAGE_STYLES, imageInput } from "@/lib/image-settings";
 import { cn } from "@/lib/utils";
+import { ImageEditPanel } from "@/components/zavita/ImageEditPanel";
 
 export const Route = createFileRoute("/ai-image")({ head: () => ({ meta: [
   { title: "AI Image Studio — ZAVITA" }, { name: "description", content: "Generate real AI images, save them privately and add them to your ZAVITA projects." },
@@ -25,6 +26,7 @@ function ImageStudio() {
   const saveImage = useServerFn(saveGeneratedImage);
   const studio = useStudio();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"generate" | "edit">("generate");
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState<(typeof IMAGE_STYLES)[number]>("Realistic Photography");
   const [ratio, setRatio] = useState<(typeof IMAGE_RATIOS)[number]>("1:1");
@@ -136,7 +138,8 @@ function ImageStudio() {
   };
 
   return <div className="min-h-[100dvh] bg-background pb-10"><ModuleHeader title="AI Image Studio" subtitle="Create a visual" />
-    <main className="mx-auto grid w-full max-w-[1000px] gap-6 px-4 pt-5 md:grid-cols-2">
+    <div className="mx-auto mt-4 grid w-full max-w-[1000px] grid-cols-2 gap-2 px-4">{(["generate", "edit"] as const).map((m) => <Button key={m} variant="outline" aria-pressed={mode === m} disabled={busy} onClick={() => setMode(m)} className={cn("rounded-xl text-[12px]", mode === m && "border-accent bg-accent/10 text-accent")}>{m === "generate" ? "Générer une image" : "Modifier une image existante"}</Button>)}</div>
+    {mode === "edit" ? (user ? <ImageEditPanel userId={user.id} onNavigateEditor={() => void navigate({ to: "/editor" })} /> : <div className="mx-auto max-w-[1000px] px-4 pt-5"><Button asChild className="w-full bg-gradient-brand"><Link to="/auth">Sign in to edit</Link></Button></div>) : <main className="mx-auto grid w-full max-w-[1000px] gap-6 px-4 pt-5 md:grid-cols-2">
       <section className="min-w-0">
         <h1 className="mb-5 text-xl font-bold">AI <span className="text-gradient">Image Studio</span></h1>
         <label htmlFor="image-prompt" className="text-[11px] font-bold uppercase text-muted-foreground">Prompt</label>
@@ -164,7 +167,7 @@ function ImageStudio() {
         {history.length === 0 && <p className="text-[12px] text-muted-foreground">No generations yet.</p>}
         <div className="space-y-2">{history.map((row) => { const input = row.input as Record<string, unknown>; const output = row.output as Record<string, unknown> | null; const thumb = thumbnails[String(output?.["assetId"])]; return <Button key={row.id} variant="outline" disabled={busy} onClick={() => void reopen(row).catch((e) => setError(e.message))} className="h-auto w-full justify-start rounded-xl p-2 text-left"><span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">{thumb ? <img src={thumb} alt="" className="size-full object-cover" /> : <ImagePlus />}</span><span className="min-w-0 flex-1"><span className="block truncate text-[12px]">{String(input["prompt"] ?? "Image generation")}</span><span className="block text-[10px] text-muted-foreground">{String(input["style"] ?? "")} · {String(input["ratio"] ?? "")} · {row.status === "QUEUED" ? "CREATED" : row.status}</span></span></Button>; })}</div>
       </section>
-    </main>
+    </main>}
     {expanded && image && <div role="dialog" aria-label="Image preview" className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 p-5"><img src={image} alt={prompt || "Generated image"} className="max-h-full max-w-full object-contain" /><Button variant="outline" size="icon" aria-label="Close image preview" onClick={() => setExpanded(false)} className="absolute right-4 top-4"><X /></Button></div>}
   </div>;
 }
