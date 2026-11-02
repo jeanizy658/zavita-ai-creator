@@ -1,3 +1,9 @@
+# Phase 12
+- [ ] Integrate real authenticated text/image video jobs and private durable storage.
+- [ ] Add AI Video Studio, supported settings, library/project image selection, history and Editor actions.
+- [ ] Test real provider jobs, playback, persistence and project insertion; report any blockers honestly.
+- [ ] Stop before Phase 13.
+
 # Phase 11
 - [x] Audit and preserve the configured image provider and existing media architecture.
 - [x] Add real prompt/styles/ratios, streaming previews and persisted generation jobs.
