@@ -267,12 +267,107 @@ export type Database = {
           },
         ]
       }
+      video_gateway_state: {
+        Row: {
+          active_job: string | null
+          blocked_message: string | null
+          blocked_status: number | null
+          blocked_type: string | null
+          id: boolean
+        }
+        Insert: {
+          active_job?: string | null
+          blocked_message?: string | null
+          blocked_status?: number | null
+          blocked_type?: string | null
+          id?: boolean
+        }
+        Update: {
+          active_job?: string | null
+          blocked_message?: string | null
+          blocked_status?: number | null
+          blocked_type?: string | null
+          id?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_gateway_state_active_job_fkey"
+            columns: ["active_job"]
+            isOneToOne: false
+            referencedRelation: "video_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_jobs: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          progress: number | null
+          project_id: string | null
+          provider_id: string | null
+          provider_status: string | null
+          request: Json
+          retry_after: string | null
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          progress?: number | null
+          project_id?: string | null
+          provider_id?: string | null
+          provider_status?: string | null
+          request: Json
+          retry_after?: string | null
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          progress?: number | null
+          project_id?: string | null
+          provider_id?: string | null
+          provider_status?: string | null
+          request?: Json
+          retry_after?: string | null
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_jobs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_video_job: { Args: { job_id: string }; Returns: boolean }
     }
     Enums: {
       asset_type:
