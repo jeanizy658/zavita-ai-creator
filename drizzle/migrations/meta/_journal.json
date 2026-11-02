@@ -8,6 +8,13 @@
       "when": 1792731833766,
       "tag": "0000_enforce_media_project_ownership",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793601562154,
+      "tag": "0001_video_generation_jobs",
+      "breakpoints": true
     }
   ]
 }
