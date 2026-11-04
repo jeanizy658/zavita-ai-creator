@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiBackgroundRouteImport } from './routes/ai-background'
 import { Route as AiEnhanceRouteImport } from './routes/ai-enhance'
 import { Route as AiImageRouteImport } from './routes/ai-image'
+import { Route as AiVideoRouteImport } from './routes/ai-video'
 import { Route as AiVoiceRouteImport } from './routes/ai-voice'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AvatarRouteImport } from './routes/avatar'
@@ -45,6 +46,11 @@ const AiEnhanceRoute = AiEnhanceRouteImport.update({
 const AiImageRoute = AiImageRouteImport.update({
   id: '/ai-image',
   path: '/ai-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiVideoRoute = AiVideoRouteImport.update({
+  id: '/ai-video',
+  path: '/ai-video',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiVoiceRoute = AiVoiceRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
   '/ai-image': typeof AiImageRoute
+  '/ai-video': typeof AiVideoRoute
   '/ai-voice': typeof AiVoiceRoute
   '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
   '/ai-image': typeof AiImageRoute
+  '/ai-video': typeof AiVideoRoute
   '/ai-voice': typeof AiVoiceRoute
   '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/ai-background': typeof AiBackgroundRoute
   '/ai-enhance': typeof AiEnhanceRoute
   '/ai-image': typeof AiImageRoute
+  '/ai-video': typeof AiVideoRoute
   '/ai-voice': typeof AiVoiceRoute
   '/auth': typeof AuthRoute
   '/avatar': typeof AvatarRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/ai-background'
     | '/ai-enhance'
     | '/ai-image'
+    | '/ai-video'
     | '/ai-voice'
     | '/auth'
     | '/avatar'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/ai-background'
     | '/ai-enhance'
     | '/ai-image'
+    | '/ai-video'
     | '/ai-voice'
     | '/auth'
     | '/avatar'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/ai-background'
     | '/ai-enhance'
     | '/ai-image'
+    | '/ai-video'
     | '/ai-voice'
     | '/auth'
     | '/avatar'
@@ -236,6 +248,7 @@ export interface RootRouteChildren {
   AiBackgroundRoute: typeof AiBackgroundRoute
   AiEnhanceRoute: typeof AiEnhanceRoute
   AiImageRoute: typeof AiImageRoute
+  AiVideoRoute: typeof AiVideoRoute
   AiVoiceRoute: typeof AiVoiceRoute
   AuthRoute: typeof AuthRoute
   AvatarRoute: typeof AvatarRoute
@@ -279,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/ai-image'
       fullPath: '/ai-image'
       preLoaderRoute: typeof AiImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-video': {
+      id: '/ai-video'
+      path: '/ai-video'
+      fullPath: '/ai-video'
+      preLoaderRoute: typeof AiVideoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai-voice': {
@@ -380,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiBackgroundRoute: AiBackgroundRoute,
   AiEnhanceRoute: AiEnhanceRoute,
   AiImageRoute: AiImageRoute,
+  AiVideoRoute: AiVideoRoute,
   AiVoiceRoute: AiVoiceRoute,
   AuthRoute: AuthRoute,
   AvatarRoute: AvatarRoute,
