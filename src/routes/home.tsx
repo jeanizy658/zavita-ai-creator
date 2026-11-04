@@ -59,8 +59,8 @@ export default function HomeScreen() {
     {
       icon: Clapperboard,
       title: "AI Video",
-      description: "Enhance & edit",
-      onClick: () => navigate({ to: "/editor" }),
+      description: "Generate videos",
+      onClick: () => navigate({ to: "/ai-video" }),
     },
     {
       icon: ImageIcon,
