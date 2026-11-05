@@ -29,7 +29,11 @@ async function gatewayFailure(admin: Client, job: Job, error: unknown, creating:
   if (e instanceof GatewayError) {
     if ([402,403,404].includes(e.status)) check((await admin.from("video_gateway_state").update({ blocked_status: e.status, blocked_message: e.message, blocked_type: e.type }).eq("id", true)).error);
     if (videoHttpRetryable(e.status)) {
-      await patch(admin, job.id, { state: creating ? "QUEUED" : job.state, error: e.message, retry_after: new Date(Date.now() + e.delay * 1000).toISOString() });
+      const attempts = job.attempts + 1;
+      if (attempts >= 3) {
+        await patch(admin,job.id,{state:"FAILED",attempts,error:e.message}); await release(admin,job.id); return;
+      }
+      await patch(admin, job.id, { attempts, state: creating ? "QUEUED" : job.state, error: e.message, retry_after: new Date(Date.now() + Math.max(e.delay,30 * 2 ** attempts) * 1000).toISOString() });
       if (creating) await release(admin, job.id);
       return;
     }
@@ -59,7 +63,7 @@ async function processJob(client: Client, admin: Client, job: Job) {
     try {
       const settings = videoInput.parse(job.request); let image: { data:string; mime_type:string } | undefined;
       if (settings.mode === "image" && settings.sourceAssetId) {
-        const q = await client.from("assets").select("*").eq("id",settings.sourceAssetId).single(); check(q.error); if (!q.data?.storage_path) throw new Error("Source image unavailable.");
+        const q = await client.from("assets").select("*").eq("id",settings.sourceAssetId).eq("user_id",job.user_id).single(); check(q.error); if (!q.data?.storage_path || !["image/png","image/jpeg","image/webp"].includes(q.data.mime_type ?? "")) throw new Error("Source image unavailable.");
         const file = await client.storage.from("media").download(q.data.storage_path); check(file.error); if (!file.data || file.data.size > 10*1024*1024) throw new Error("Source image exceeds 10 MB.");
         const { Buffer } = await import("node:buffer"); image = { data:Buffer.from(await file.data.arrayBuffer()).toString("base64"), mime_type:q.data.mime_type ?? "image/png" };
       }
@@ -77,7 +81,8 @@ async function processJob(client: Client, admin: Client, job: Job) {
   if (provider.status !== "completed") { await patch(admin,job.id,{ provider_status:provider.status,progress:typeof provider.progress === "number" ? provider.progress : null,error:null,retry_after:null }); return; }
   await patch(admin,job.id,{state:"SAVING",provider_status:"completed",retry_after:null});
   try {
-    let asset = (await client.from("assets").select("*").eq("id",job.id).maybeSingle()).data;
+    const existing = await client.from("assets").select("*").eq("id",job.id).eq("user_id",job.user_id).maybeSingle(); check(existing.error);
+    let asset = existing.data;
     if (!asset) {
       const response = await gateway(`/${encodeURIComponent(job.provider_id)}/content`);
       const blob = await response.blob();
@@ -97,15 +102,27 @@ async function processJob(client: Client, admin: Client, job: Job) {
 }
 export async function syncVideoQueue(client: Client,userId:string) {
   const admin = await adminClient();
+  await runWorker(admin,client,userId);
   const block = await admin.from("video_gateway_state").select("*").eq("id",true).maybeSingle(); check(block.error);
-  if (!block.data?.blocked_status && process.env["AI_VIDEO_ENABLED"] !== "false") {
-    const q = await client.from("video_jobs").select("*").eq("user_id",userId).in("state",["QUEUED","GENERATING","SAVING"]).order("created_at"); check(q.error);
-    // Existing provider work always finishes before the next queued request starts.
-    const active = q.data?.find(j => j.provider_id) ?? q.data?.[0]; if(active) await processJob(client,admin,active);
-  }
   const jobs=await client.from("video_jobs").select("*").order("created_at",{ascending:false}).limit(50); check(jobs.error);
   return { jobs:jobs.data ?? [], blocked:block.data?.blocked_message ?? null };
 }
+async function runWorker(admin:Client,client:Client,userId?:string) {
+  if(process.env["AI_VIDEO_ENABLED"] === "false") return;
+  const token=crypto.randomUUID();const acquired=await admin.rpc("acquire_video_worker",{token});check(acquired.error);if(!acquired.data)return;
+  try{
+    let query=client.from("video_jobs").select("*").in("state",["QUEUED","SUBMITTING","GENERATING","SAVING"]).order("created_at");
+    if(userId)query=query.eq("user_id",userId);
+    const q=await query;check(q.error);
+    const active=q.data?.find(j=>j.provider_id||j.state==="SUBMITTING")??q.data?.[0];if(!active)return;
+    if(active.state==="SUBMITTING") {
+      if(Date.now()-Date.parse(active.updated_at)>300000){await patch(admin,active.id,{state:"FAILED",error:"Submission interrupted; provider acceptance could not be confirmed. No resubmission was made."});await release(admin,active.id);}return;
+    }
+    await processJob(client,admin,active);
+  }finally{check((await admin.from("video_gateway_state").update({worker_token:null,worker_expires:null}).eq("id",true).eq("worker_token",token)).error);}
+}
+/** Only invoked after managed cron authentication; processes one explicit queued job. */
+export async function runScheduledVideos(){const admin=await adminClient();await runWorker(admin,admin);}
 export async function resumeVideo(userId:string) {
   const admin=await adminClient();
   const state=await admin.from("video_gateway_state").select("*").eq("id",true).maybeSingle(); check(state.error);

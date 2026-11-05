@@ -21,6 +21,7 @@ function providerFor(capability: AiCapability): Provider {
   const hasLovable = Boolean(process.env["LOVABLE_API_KEY"]);
   switch (capability) {
     case "generateImage":
+    case "generateVideo":
       return hasLovable ? "lovable" : null;
     case "analyzeContent":
     case "generateCaptions":
@@ -30,7 +31,6 @@ function providerFor(capability: AiCapability): Provider {
     case "generateSoundDesign":
       return hasLovable ? "lovable" : null;
     // No media-processing provider is wired yet — these must not fake results.
-    case "generateVideo":
     case "enhanceVideo":
     case "enhanceVoice":
     case "removeBackground":
@@ -104,6 +104,10 @@ export const runAiCapability = createServerFn({ method: "POST" })
     const capability = data.capability as AiCapability;
     if (!(capability in CAPABILITY_FLAG)) {
       return { ok: false, code: "INVALID_INPUT", message: `Unknown AI capability: ${data.capability}` };
+    }
+
+    if (capability === "generateVideo") {
+      return { ok: false, code: "INVALID_INPUT", message: "Use AI Video Studio to submit a validated asynchronous video request." };
     }
 
     const provider = providerFor(capability);
