@@ -1,8 +1,10 @@
 # Phase 12
-- [ ] Integrate real authenticated text/image video jobs and private durable storage.
-- [ ] Add AI Video Studio, supported settings, library/project image selection, history and Editor actions.
-- [ ] Test real provider jobs, playback, persistence and project insertion; report any blockers honestly.
-- [ ] Stop before Phase 13.
+- [x] Integrate authenticated text/image video jobs, serialized provider work, managed scheduled processing and private job-keyed storage.
+- [x] Add AI Video Studio, supported settings, library/project image selection, history and Editor actions.
+- [x] Verify one real direct text-to-video provider job and MP4 download (3.029 seconds, 1280×720, 24 fps); verify mobile/desktop controls, navigation, unauthorized worker denial and 25 tests.
+- [ ] Verify signed-in submission, private storage, playback, image-to-video, project insertion and refresh end-to-end. Blocker: no requesting-user session; user skipped account selection and must sign in.
+- [ ] Verify scheduled completion on deployed version. Blocker: updated app has not been published; schedule exists but the published app does not yet contain its target.
+- [x] Stop before Phase 13.
 
 # Phase 11
 - [x] Audit and preserve the configured image provider and existing media architecture.

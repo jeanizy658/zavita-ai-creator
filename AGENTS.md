@@ -25,3 +25,4 @@
 - Keep video requests in server-write-only video_jobs and serialize provider creation through the durable gateway lock, because clients must not forge provider completion or create concurrent billed work.
 - Save completed MP4s with job-keyed assets and deterministic private paths; retry storage separately from generation, because provider downloads expire and resubmission can bill twice.
 - Read actual video duration and dimensions before timeline insertion; never substitute requested duration for measured media metadata.
+- Process at most one queued video per managed cron or authenticated poll with a database worker lease; check persistent service pauses at both entry points to prevent parallel work and denied-call storms.

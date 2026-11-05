@@ -96,7 +96,7 @@ async function processJob(client: Client, admin: Client, job: Job) {
     if (!asset) throw new Error("Video metadata could not be saved.");
     await patch(admin,job.id,{state:"COMPLETED",asset_id:asset.id,error:null}); await release(admin,job.id);
   } catch(e) {
-    if(e instanceof GatewayError && [402,403,404].includes(e.status)) { await gatewayFailure(admin,job,e,false); return; }
+    if(e instanceof GatewayError) { await gatewayFailure(admin,{...job,state:"SAVING"},e,false); return; }
     await patch(admin,job.id,{state:"SAVING",error:`Video generated; saving failed: ${e instanceof Error ? e.message : "storage unavailable"}`,retry_after:new Date(Date.now()+30000).toISOString()});
   }
 }
@@ -111,7 +111,7 @@ async function runWorker(admin:Client,client:Client,userId?:string) {
   if(process.env["AI_VIDEO_ENABLED"] === "false") return;
   const token=crypto.randomUUID();const acquired=await admin.rpc("acquire_video_worker",{token});check(acquired.error);if(!acquired.data)return;
   try{
-    let query=client.from("video_jobs").select("*").in("state",["QUEUED","SUBMITTING","GENERATING","SAVING"]).order("created_at");
+    let query=client.from("video_jobs").select("*").in("state",["QUEUED","SUBMITTING","GENERATING","SAVING"]).order("created_at").limit(100);
     if(userId)query=query.eq("user_id",userId);
     const q=await query;check(q.error);
     const active=q.data?.find(j=>j.provider_id||j.state==="SUBMITTING")??q.data?.[0];if(!active)return;
