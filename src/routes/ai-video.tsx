@@ -95,7 +95,7 @@ function VideoStudio() {
           const clips=await supabase.from("timeline_clips").select("id").eq("project_id",id).eq("asset_id",asset.id).eq("track_type","MAIN");if(clips.error)throw new Error(clips.error.message);
           if(!clips.data.length)await appendAssets(user.id,id,[{assetId:asset.id,track:"MAIN",duration:metadata.duration,label:asset.name}]);
           await studio.openProject(id);await navigate({to:"/editor"});
-        }else{setNotice("Video added to project");await loadMedia();}
+        }else{await readMetadata(asset,url);setNotice("Video added to project");await loadMedia();}
       }
     }catch(e){setError(e instanceof Error?e.message:"Action failed.");}finally{lock.current=false;setBusy(false);}
   };
@@ -103,6 +103,7 @@ function VideoStudio() {
     if(!asset||asset.thumbnail_url||!user||lock.current)return;
     lock.current=true;try{
       const url=await signedUrl(asset.storage_path);if(!url)return;const r=await fetch(url);if(!r.ok)return;
+      await readMetadata(asset,url);
       const blob=await r.blob();const thumb=await generateThumbnail(new File([blob],asset.name,{type:"video/mp4"}),"video");if(!thumb)return;
       const path=await uploadToStorage(user.id,thumb,`${asset.id}.thumb.jpg`).promise;
       const q=await supabase.from("assets").update({thumbnail_url:path}).eq("id",asset.id);if(q.error)throw new Error(q.error.message);await loadMedia();
