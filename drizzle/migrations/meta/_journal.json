@@ -15,6 +15,13 @@
       "when": 1793601562154,
       "tag": "0001_video_generation_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793867721139,
+      "tag": "0002_video_worker_lease",
+      "breakpoints": true
     }
   ]
 }

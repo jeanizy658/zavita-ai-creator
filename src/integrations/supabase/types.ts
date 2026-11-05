@@ -274,6 +274,8 @@ export type Database = {
           blocked_status: number | null
           blocked_type: string | null
           id: boolean
+          worker_expires: string | null
+          worker_token: string | null
         }
         Insert: {
           active_job?: string | null
@@ -281,6 +283,8 @@ export type Database = {
           blocked_status?: number | null
           blocked_type?: string | null
           id?: boolean
+          worker_expires?: string | null
+          worker_token?: string | null
         }
         Update: {
           active_job?: string | null
@@ -288,6 +292,8 @@ export type Database = {
           blocked_status?: number | null
           blocked_type?: string | null
           id?: boolean
+          worker_expires?: string | null
+          worker_token?: string | null
         }
         Relationships: [
           {
@@ -302,6 +308,7 @@ export type Database = {
       video_jobs: {
         Row: {
           asset_id: string | null
+          attempts: number
           created_at: string
           error: string | null
           id: string
@@ -317,6 +324,7 @@ export type Database = {
         }
         Insert: {
           asset_id?: string | null
+          attempts?: number
           created_at?: string
           error?: string | null
           id?: string
@@ -332,6 +340,7 @@ export type Database = {
         }
         Update: {
           asset_id?: string | null
+          attempts?: number
           created_at?: string
           error?: string | null
           id?: string
@@ -367,6 +376,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_video_worker: { Args: { token: string }; Returns: boolean }
       claim_video_job: { Args: { job_id: string }; Returns: boolean }
     }
     Enums: {
