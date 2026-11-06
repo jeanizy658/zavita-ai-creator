@@ -7,7 +7,7 @@ import { ModuleHeader } from "@/components/zavita/ModuleHeader";
 import { useAuth } from "@/lib/auth";
 import { useStudio } from "@/lib/studio-store";
 import { submitVideo, syncVideos, videoAvailability, resumeVideoService } from "@/lib/video.functions";
-import { VIDEO_DURATIONS, VIDEO_RATIOS, VIDEO_RESOLUTIONS, CAMERA_MOVEMENTS, videoInput, type VideoInput } from "@/lib/video-settings";
+import { VIDEO_DURATIONS, VIDEO_RATIOS, VIDEO_RESOLUTIONS, CAMERA_MOVEMENTS, VIDEO_STYLES, MOTION_LEVELS, videoInput, type VideoInput } from "@/lib/video-settings";
 import { listAssets, listProjects, uploadAsset, appendAssets, attachAssetToProject, type Asset, type Project } from "@/lib/data";
 import { signedUrl, uploadToStorage } from "@/lib/storage";
 import { generateThumbnail, formatDuration } from "@/lib/media";
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/ai-video")({ head: () => ({ meta: [
   { property: "og:title", content: "AI Video Studio — ZAVITA" }, { property: "og:description", content: "Animate your images or create new video clips in ZAVITA." },
   { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" },
 ] }), component: VideoStudio });
-const initial: VideoInput = { prompt: "", mode: "text", duration: 5, ratio: "9:16", resolution: "720p", camera: "Natural", atmosphere: "", sourceAssetId: null, projectId: null };
+const initial: VideoInput = { prompt: "", mode: "text", duration: 5, ratio: "9:16", resolution: "720p", camera: "Natural", atmosphere: "", style: "Photorealistic", motion: "Medium", sourceAssetId: null, projectId: null };
 const stateLabels: Record<string,string> = { QUEUED:"Waiting in queue", SUBMITTING:"Preparing request", GENERATING:"Generation in progress", SAVING:"Processing · saving privately", COMPLETED:"Completed", FAILED:"Failed" };
 
 function VideoStudio() {
@@ -76,7 +76,7 @@ function VideoStudio() {
     const element=document.createElement("video");element.preload="metadata";
     const metadata=await new Promise<{duration:number;width:number;height:number}>((resolve,reject)=>{
       const timer=setTimeout(()=>reject(new Error("Video metadata could not be read.")),15000);
-      element.onloadedmetadata=()=>{clearTimeout(timer); if(!Number.isFinite(element.duration)||element.duration<=0){reject(new Error("Video duration is unavailable."));return;} resolve({duration:element.duration,width:element.videoWidth,height:element.videoHeight});};
+      element.onloadedmetadata=()=>{clearTimeout(timer); if(!Number.isFinite(element.duration)||element.duration<=0){reject(new Error("Video duration is unavailable."));return;} if(!element.videoWidth||!element.videoHeight){clearTimeout(timer);reject(new Error("Saved file has no video track."));return;} resolve({duration:element.duration,width:element.videoWidth,height:element.videoHeight});};
       element.onerror=()=>{clearTimeout(timer);reject(new Error("Saved video could not be played."));};element.src=url;
     }).finally(()=>{element.removeAttribute("src");element.load();});
     const existing=item.metadata&&typeof item.metadata==="object"&&!Array.isArray(item.metadata)?item.metadata:{};
@@ -129,6 +129,7 @@ function VideoStudio() {
         <textarea id="video-prompt" rows={5} maxLength={4000} value={settings.prompt} disabled={busy} onChange={e=>update("prompt",e.target.value)} placeholder={settings.mode==="image"?"Describe the movement, camera and atmosphere…":"A tropical coastline at sunrise, waves rolling onto the sand, gentle ocean sounds…"} className="mt-2 w-full resize-y rounded-lg border border-border bg-surface p-3 text-[13px] outline-none focus:border-accent"/>
         <div className="mt-2 flex flex-wrap gap-1">{["Aerial coastline at sunrise","A flower opening in soft light"].map(p=><Button key={p} variant="ghost" size="sm" disabled={busy} onClick={()=>update("prompt",p+", in a single continuous shot.")} className="h-auto max-w-full whitespace-normal text-left text-[10px] text-muted-foreground">{p}</Button>)}</div>
         <div className="mt-5 grid grid-cols-2 gap-3"><label className="text-xs text-muted-foreground">Duration<select aria-label="Video duration" value={settings.duration} disabled={busy} onChange={e=>update("duration",Number(e.target.value))} className={selectClass}>{VIDEO_DURATIONS.map(d=><option key={d} value={d}>{d} seconds</option>)}</select></label><label className="text-xs text-muted-foreground">Resolution<select aria-label="Video resolution" value={settings.resolution} disabled={busy} onChange={e=>update("resolution",e.target.value as VideoInput["resolution"])} className={selectClass}>{VIDEO_RESOLUTIONS.map(r=><option key={r}>{r}</option>)}</select></label></div>
+        <div className="mt-5 grid grid-cols-2 gap-3"><label className="text-xs text-muted-foreground">Visual style<select aria-label="Visual style" value={settings.style} disabled={busy} onChange={e=>update("style",e.target.value as VideoInput["style"])} className={selectClass}>{VIDEO_STYLES.map(v=><option key={v}>{v}</option>)}</select></label><label className="text-xs text-muted-foreground">Motion<select aria-label="Motion level" value={settings.motion} disabled={busy} onChange={e=>update("motion",e.target.value as VideoInput["motion"])} className={selectClass}>{MOTION_LEVELS.map(v=><option key={v}>{v}</option>)}</select></label></div>
         <p className="mb-2 mt-5 text-[11px] font-bold uppercase text-muted-foreground">Aspect ratio</p><div className="grid grid-cols-2 gap-2">{VIDEO_RATIOS.map(r=><Button key={r} variant="outline" disabled={busy} aria-pressed={settings.ratio===r} onClick={()=>update("ratio",r)} className={cn("text-xs",settings.ratio===r&&"border-accent text-accent")}>{r} · {r==="9:16"?"Portrait":"Landscape"}</Button>)}</div>
         <details className="mt-5 border-t border-border pt-3"><summary className="cursor-pointer text-xs font-semibold">Scene direction</summary><label className="mt-3 block text-xs text-muted-foreground">Camera<select aria-label="Camera movement" value={settings.camera} disabled={busy} onChange={e=>update("camera",e.target.value as VideoInput["camera"])} className={selectClass}>{CAMERA_MOVEMENTS.map(c=><option key={c}>{c}</option>)}</select></label><label className="mt-3 block text-xs text-muted-foreground">Lighting & atmosphere<input aria-label="Lighting and atmosphere" value={settings.atmosphere} maxLength={200} disabled={busy} onChange={e=>update("atmosphere",e.target.value)} className={selectClass} placeholder="Soft sunrise, cinematic lighting…"/></label></details>
         <label htmlFor="video-project" className="mt-5 block text-[11px] font-bold uppercase text-muted-foreground">Project</label><select id="video-project" value={settings.projectId??""} disabled={busy} onChange={e=>update("projectId",e.target.value||null)} className={selectClass}><option value="">Media library</option>{projects.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select>
