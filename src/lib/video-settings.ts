@@ -73,7 +73,7 @@ export function inspectMp4(bytes: Uint8Array): { duration: number; width: number
   let width = 0, height = 0;
   for (let t = find("tkhd"); t >= 0; t = find("tkhd", t + 4)) {
     const hdlr = find("hdlr", t); if (hdlr < 0 || ascii(hdlr + 12, 4) !== "vide") continue;
-    const tv1 = bytes[t + 4] === 1; const off = t + (tv1 ? 88 : 76);
+    const tv1 = bytes[t + 4] === 1; const off = t + (tv1 ? 92 : 80);
     width = view.getUint32(off) >>> 16; height = view.getUint32(off + 4) >>> 16; break;
   }
   if (!width || !height) throw new Error("File contains no video track.");
