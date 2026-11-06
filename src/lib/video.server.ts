@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { videoInput, videoRequest, videoHttpRetryable, type VideoInput } from "./video-settings";
+import { videoInput, videoRequest, videoHttpRetryable, inspectMp4, type VideoInput } from "./video-settings";
+class ProviderOutputError extends Error {}
 type Client = SupabaseClient<Database>;
 type Job = Database["public"]["Tables"]["video_jobs"]["Row"];
 type ProviderJob = { id: string; status: string; progress?: number; error?: { code?: string; message?: string } };
@@ -87,15 +88,18 @@ async function processJob(client: Client, admin: Client, job: Job) {
       const response = await gateway(`/${encodeURIComponent(job.provider_id)}/content`);
       const blob = await response.blob();
       if (blob.size < 12 || blob.size > 120*1024*1024) throw new Error("Generated video exceeds the supported storage size.");
-      const signature = new Uint8Array(await blob.slice(4,8).arrayBuffer());
-      if (String.fromCharCode(...signature) !== "ftyp") throw new Error("Provider returned an invalid MP4 file.");
+      const type = response.headers.get("content-type") ?? "";
+      if (type.startsWith("image/")) throw new ProviderOutputError(`Provider returned an image (${type}), not a video.`);
+      let meta: { duration:number; width:number; height:number };
+      try { meta = inspectMp4(new Uint8Array(await blob.arrayBuffer())); } catch (err) { throw new ProviderOutputError(err instanceof Error ? err.message : "Invalid video."); }
       const path = `${job.user_id}/generated-video/${job.id}.mp4`;
       check((await client.storage.from("media").upload(path,blob,{contentType:"video/mp4",upsert:true})).error);
-      const q = await client.from("assets").upsert({ id:job.id,user_id:job.user_id,project_id:job.project_id,type:"AI_VIDEO",name:`AI-video-${job.id}.mp4`,storage_path:path,mime_type:"video/mp4",size:blob.size,metadata:{ providerId:job.provider_id,settings:job.request } }).select("*").single(); check(q.error); asset=q.data;
+      const q = await client.from("assets").upsert({ id:job.id,user_id:job.user_id,project_id:job.project_id,type:"AI_VIDEO",name:`AI-video-${job.id}.mp4`,storage_path:path,mime_type:"video/mp4",size:blob.size,duration:meta.duration,metadata:{ providerId:job.provider_id,settings:job.request,...meta,verified:"mp4-video-track" } }).select("*").single(); check(q.error); asset=q.data;
     }
     if (!asset) throw new Error("Video metadata could not be saved.");
     await patch(admin,job.id,{state:"COMPLETED",asset_id:asset.id,error:null}); await release(admin,job.id);
   } catch(e) {
+    if(e instanceof ProviderOutputError) { await patch(admin,job.id,{state:"FAILED",error:`${e.message} No result was saved.`}); await release(admin,job.id); return; }
     if(e instanceof GatewayError) { await gatewayFailure(admin,{...job,state:"SAVING"},e,false); return; }
     await patch(admin,job.id,{state:"SAVING",error:`Video generated; saving failed: ${e instanceof Error ? e.message : "storage unavailable"}`,retry_after:new Date(Date.now()+30000).toISOString()});
   }
